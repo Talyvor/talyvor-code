@@ -1,0 +1,27 @@
+name: Marketplace identity
+
+# Prints the Azure DevOps id of the managed identity that publishes the extension, so it can be added
+# to the `talyvor` Marketplace publisher as a Contributor. Run it once from the Actions tab.
+#
+# It logs in exactly as publish-extension.yaml does: OIDC from environment marketplace-publish, no
+# secret. azure/login logs the token's subject claim, which tells Nicolai which federated credential
+# matched. The id printed is an identifier, not a credential.
+on:
+  workflow_dispatch:
+
+jobs:
+  identity:
+    runs-on: ubuntu-latest
+    environment: marketplace-publish
+    permissions:
+      id-token: write
+    steps:
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+      - name: the identity's Azure DevOps id
+        run: |
+          az rest -u https://app.vssps.visualstudio.com/_apis/profile/profiles/me \
+            --resource 499b84ac-1321-427f-aa17-267ca6975798 --query '{id: id, displayName: displayName}'
