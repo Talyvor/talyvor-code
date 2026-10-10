@@ -3,7 +3,9 @@
 This file is the Marketplace **Changelog** tab. It ships inside the `.vsix`; anything not written
 here is invisible to someone deciding whether to install.
 
-## [Unreleased]
+## [0.3.1]
+
+Works with Talyvor Code CLI v0.3.0; nothing to upgrade on the CLI side.
 
 ### Changed
 
