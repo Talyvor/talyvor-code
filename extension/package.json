@@ -2,7 +2,7 @@
   "name": "talyvor-code",
   "displayName": "Talyvor Code",
   "description": "An AI coding agent that runs on its own Talyvor wallet \u2014 budget, rules, cost per issue",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "talyvor",
   "icon": "media/icon.png",
   "galleryBanner": {
