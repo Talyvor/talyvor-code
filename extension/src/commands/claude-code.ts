@@ -7,7 +7,7 @@ import * as vscode from "vscode";
 import { TalyvorConfig } from "../config";
 import { CLAUDE_EXEC_ARGS, CLI_NAME, cliEnv, findOnPath } from "./claude-code-pure";
 
-const CLI_INSTALL_URL = "https://github.com/gaboracnicolai/talyvor-code#install";
+const CLI_INSTALL_URL = "https://github.com/Talyvor/talyvor-code#install";
 
 function isExecutable(file: string): boolean {
   try {

@@ -12,7 +12,7 @@
   "license": "BUSL-1.1",
   "repository": {
     "type": "git",
-    "url": "https://github.com/gaboracnicolai/talyvor-code.git"
+    "url": "https://github.com/Talyvor/talyvor-code.git"
   },
   "engines": {
     "vscode": "^1.85.0"

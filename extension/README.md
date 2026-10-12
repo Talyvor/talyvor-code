@@ -1,6 +1,6 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/gaboracnicolai/talyvor-code/main/extension/media/talyvor-logo-dark.png">
-  <img src="https://raw.githubusercontent.com/gaboracnicolai/talyvor-code/main/extension/media/talyvor-logo-light.png" alt="Talyvor" width="360">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Talyvor/talyvor-code/main/extension/media/talyvor-logo-dark.png">
+  <img src="https://raw.githubusercontent.com/Talyvor/talyvor-code/main/extension/media/talyvor-logo-light.png" alt="Talyvor" width="360">
 </picture>
 
 # Talyvor Code
@@ -102,7 +102,7 @@ named by your branch. Your claude.ai login and connectors are untouched.
 Install the CLI from the repository's releases:
 
 ```
-curl -sSL https://raw.githubusercontent.com/gaboracnicolai/talyvor-code/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Talyvor/talyvor-code/main/install.sh | bash
 ```
 
 Without it on your `PATH` the command says so and links here. **Claude Code is the one agent this
@@ -130,4 +130,4 @@ code --install-extension talyvor-code-*.vsix
 ## Licence
 
 BUSL-1.1 — see the licence tab. Source, issues and the full documentation:
-<https://github.com/gaboracnicolai/talyvor-code>.
+<https://github.com/Talyvor/talyvor-code>.

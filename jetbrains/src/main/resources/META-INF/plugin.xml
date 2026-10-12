@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.talyvor.code</id>
     <name>Talyvor Code</name>
-    <vendor email="hello@talyvor.com" url="https://github.com/gaboracnicolai/talyvor-code">Talyvor</vendor>
+    <vendor email="hello@talyvor.com" url="https://github.com/Talyvor/talyvor-code">Talyvor</vendor>
 
     <description><![CDATA[
         AI coding assistant powered by Talyvor Lens.
