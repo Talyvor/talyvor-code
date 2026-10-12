@@ -100,7 +100,7 @@ The status-bar item cycles through `$(warning) Talyvor: Setup required` → `$(s
 ### Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/gaboracnicolai/talyvor-code/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Talyvor/talyvor-code/main/install.sh | bash
 ```
 
 Downloads the binary for your platform from the latest GitHub release and **verifies its

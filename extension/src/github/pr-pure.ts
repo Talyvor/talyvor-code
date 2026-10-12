@@ -94,7 +94,7 @@ export function generatePRBody(
   }
   out.push("");
   out.push("---");
-  out.push("*Opened by [Talyvor Code](https://github.com/gaboracnicolai/talyvor-code)*");
+  out.push("*Opened by [Talyvor Code](https://github.com/Talyvor/talyvor-code)*");
   out.push("");
   return out.join("\n");
 }

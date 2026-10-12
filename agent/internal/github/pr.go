@@ -153,7 +153,7 @@ func GeneratePRBody(
 	} else {
 		fmt.Fprintf(&b, "AI cost: $%.2f\n", costUSD)
 	}
-	b.WriteString("\n---\n*Opened by [Talyvor Code](https://github.com/gaboracnicolai/talyvor-code)*\n")
+	b.WriteString("\n---\n*Opened by [Talyvor Code](https://github.com/Talyvor/talyvor-code)*\n")
 	return b.String()
 }
 

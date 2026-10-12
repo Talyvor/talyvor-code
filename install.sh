@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-REPO="${TALYVOR_REPO:-gaboracnicolai/talyvor-code}"
+REPO="${TALYVOR_REPO:-Talyvor/talyvor-code}"
 BIN_NAME="talyvor-code"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 VERSION="${TALYVOR_VERSION:-latest}"
