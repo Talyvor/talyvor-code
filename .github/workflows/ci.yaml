@@ -188,7 +188,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
         with:
-          java-version: "17"
+          java-version: "21"
           distribution: "temurin"
           # Caches ~/.gradle/caches (incl. the IntelliJ Platform SDK, which the
           # gradle-intellij plugin pulls as a Gradle dependency) + ~/.gradle/wrapper,
@@ -196,9 +196,11 @@ jobs:
           # SDK download on every merge.
           cache: gradle
       # The wrapper (gradlew + gradle-wrapper.jar) is committed, so ./gradlew
-      # self-provisions Gradle 8.7 — no `gradle` preinstall / wrapper-generation step.
-      - name: Test + build JetBrains plugin
-        run: cd jetbrains && ./gradlew test buildPlugin --no-daemon
+      # self-provisions Gradle 9.8.1 — no `gradle` preinstall / wrapper-generation step.
+      # verifyPlugin loads the built plugin into IntelliJ IDEA 2025.1 and 2026.2.3
+      # (build.gradle.kts pluginVerification) and fails on any compatibility problem.
+      - name: Test + build + verify JetBrains plugin
+        run: cd jetbrains && ./gradlew test buildPlugin verifyPlugin --no-daemon
 
   # THE RELEASE JOB THE README ALREADY DOCUMENTED.
   #

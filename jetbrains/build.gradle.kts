@@ -1,24 +1,31 @@
-// Talyvor Code JetBrains plugin — Phase 1 scaffold.
+// Talyvor Code JetBrains plugin.
 //
-// Targets IntelliJ Community 2024.1 as the floor (sinceBuild =
-// "241") and runs on the IntelliJ Platform Gradle Plugin 2.x,
-// which moved repository config + SDK declaration into the new
-// `intellijPlatform { … }` block.
+// Compiled against the current stable IntelliJ IDEA (2026.2) with no
+// upper build limit, so every IDE from 2025.1 (build 251) on accepts it.
+// verifyPlugin checks it against both ends of that range in CI.
 
 import org.gradle.api.tasks.PathSensitivity
-import org.jetbrains.intellij.platform.gradle.tasks.PatchPluginXmlTask
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 
 plugins {
     id("java")
-    id("org.jetbrains.kotlin.jvm") version "1.9.22"
-    id("org.jetbrains.intellij.platform") version "2.0.1"
+    id("org.jetbrains.kotlin.jvm") version "2.4.21"
+    id("org.jetbrains.intellij.platform") version "2.19.0"
 }
 
 group = "com.talyvor"
 version = "0.1.0"
 
+// Java 21 bytecode, not the Java 25 that 2026.2 itself is built for, so
+// IDEs 2025.1–2026.1 (which run on Java 21) can still load the plugin.
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
+    // Without this, Kotlin writes bridges into ChatToolWindowFactory for every
+    // ToolWindowFactory default method, and 2025.1 marks some of those internal,
+    // which verifyPlugin rejects.
+    compilerOptions {
+        jvmDefault.set(org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode.NO_COMPATIBILITY)
+    }
 }
 
 repositories {
@@ -29,15 +36,11 @@ repositories {
 }
 
 dependencies {
-    // The IntelliJ Community 2024.1 SDK supplies all the editor +
-    // tool window APIs the plugin uses. `instrumentationTools`
-    // pulls in the bytecode rewriter Java forms require.
+    // The IntelliJ IDEA 2026.2 SDK supplies all the editor + tool
+    // window APIs the plugin uses.
     intellijPlatform {
-        intellijIdeaCommunity("2024.1")
-        instrumentationTools()
-        // pluginVerifier backs the optional `verifyPlugin` task. It
-        // is inert for `buildPlugin`; folded in here from a separate
-        // trailing block so the verifier resolves when invoked.
+        intellijIdea("2026.2.3")
+        // pluginVerifier backs `verifyPlugin`, which CI runs.
         pluginVerifier()
     }
     // org.json is a stable, dep-free JSON library — keeps the
@@ -50,11 +53,22 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
 }
 
-tasks {
-    withType<PatchPluginXmlTask> {
-        sinceBuild.set("241")
-        untilBuild.set("251.*")
+intellijPlatform {
+    pluginConfiguration {
+        ideaVersion {
+            sinceBuild = "251"
+            untilBuild = provider { null }
+        }
     }
+    pluginVerification {
+        ides {
+            create(IntelliJPlatformType.IntellijIdeaCommunity, "2025.1")
+            create(IntelliJPlatformType.IntellijIdea, "2026.2.3")
+        }
+    }
+}
+
+tasks {
 
     // testdata/safeurl-cases.json is an INPUT of the test task, and saying so is load-bearing.
     //

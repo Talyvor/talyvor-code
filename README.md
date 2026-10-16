@@ -22,7 +22,7 @@ Three surfaces ship from this repository:
 | --- | --- | --- |
 | VS Code extension (TypeScript) | `extension/` | Inline completions, chat, test generation, agentic mode, docs hover, status bar, dashboard |
 | CLI agent (Go) | `agent/` | `ask`, `chat`, `test`, `run`, `review`, `commit`, `docs`, `serve` (MCP), `pr`, `shell`, `context`, `scope` |
-| JetBrains plugin (Kotlin) | `jetbrains/` | Explain code · Generate tests · AI chat tool window (Phase 1 — feature parity coming) |
+| JetBrains plugin (Kotlin) | `jetbrains/` | Explain code · Generate tests · streaming chat tool window · shell command · model picker · connection test |
 
 ## Why Talyvor Code?
 
@@ -184,23 +184,24 @@ TALYVOR_MCP_TOKEN=$(openssl rand -hex 32) talyvor-code serve --port 7777 --root 
 
 ## JetBrains plugin (IntelliJ IDEA, GoLand, PyCharm, …)
 
-Needs JDK 17. The Gradle wrapper is committed, so `./gradlew` provisions Gradle 8.7 itself — no
-system Gradle to install, and nothing to generate first.
+Needs JDK 21. The Gradle wrapper is committed, so `./gradlew` provisions Gradle 9.8.1 itself — no
+system Gradle to install, and nothing to generate first. Installs on any JetBrains IDE from 2025.1 on.
 
 ```bash
 cd jetbrains
 ./gradlew buildPlugin # → build/distributions/talyvor-code-0.1.0.zip
 ```
 
-Install via **Settings → Plugins → ⚙️ → Install Plugin from Disk…** and configure under **Settings → Tools → Talyvor Code**.
+Install via **Settings → Plugins → ⚙️ → Install Plugin from Disk…** and configure under **Settings → Tools → Talyvor Code**
+with an agent key from **Agent Wallets**. It is not on the JetBrains Marketplace.
 
-Phase 1 ships:
+It ships:
 
-- Right-click → **Talyvor → Explain Code** (Lens-routed, issue-attributed)
-- Right-click → **Talyvor → Generate Tests** (auto-upgrades Haiku → Sonnet)
-- **Talyvor Code** tool window with multi-turn chat
+- Right-click → **Talyvor → Explain Code**, **Generate Tests** (auto-upgrades Haiku → Sonnet) and **Open Chat**
+- **Talyvor Code** tool window with streaming multi-turn chat
+- Tools → Talyvor → **Test Lens Connection**, **Select AI Model** and **Generate Shell Command**
 
-Roadmap: inline completions, streaming chat, full agent mode, Track + Docs integration parity. See [`jetbrains/README.md`](jetbrains/README.md) for the full plugin-side write-up.
+It has no inline completions, agent mode, Track or Docs commands. See [`jetbrains/README.md`](jetbrains/README.md).
 
 ## Attributing other tools' spend — `talyvor-code exec`
 
