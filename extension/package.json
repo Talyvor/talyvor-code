@@ -217,6 +217,28 @@
       }
     ],
     "menus": {
+      "commandPalette": [
+        {
+          "command": "talyvor.setActiveIssue",
+          "when": "talyvor.trackReachable"
+        },
+        {
+          "command": "talyvor.openDocs",
+          "when": "talyvor.docsReachable"
+        },
+        {
+          "command": "talyvor.searchDocs",
+          "when": "talyvor.docsReachable"
+        },
+        {
+          "command": "talyvor.askDocs",
+          "when": "talyvor.docsReachable"
+        },
+        {
+          "command": "talyvor.linkDocToIssue",
+          "when": "talyvor.docsReachable"
+        }
+      ],
       "editor/context": [
         {
           "command": "talyvor.explainCode",
@@ -252,12 +274,13 @@
         },
         {
           "command": "talyvor.searchDocs",
-          "group": "talyvor@8"
+          "group": "talyvor@8",
+          "when": "talyvor.docsReachable"
         },
         {
           "command": "talyvor.askDocs",
           "group": "talyvor@9",
-          "when": "editorHasSelection"
+          "when": "editorHasSelection && talyvor.docsReachable"
         },
         {
           "command": "talyvor.reviewSelection",
@@ -298,7 +321,8 @@
       {
         "command": "talyvor.searchDocs",
         "key": "ctrl+shift+d",
-        "mac": "cmd+shift+d"
+        "mac": "cmd+shift+d",
+        "when": "talyvor.docsReachable"
       }
     ]
   },

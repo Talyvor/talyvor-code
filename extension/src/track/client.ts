@@ -168,6 +168,21 @@ export class TrackClient {
     }
   }
 
+  // reachable says whether this Track answers this key at all. A hosted Track refuses a request
+  // that did not come through its gateway, so a set URL is not enough to offer the picker.
+  async reachable(workspaceId: string): Promise<boolean> {
+    if (!this.isConfigured() || !workspaceId) return false;
+    try {
+      const res = await fetch(
+        `${this.url.replace(/\/$/, "")}/v1/workspaces/${encodeURIComponent(workspaceId)}/issues?limit=1`,
+        { headers: this.headers() },
+      );
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
   // listIssues returns recent issues for the workspace. Used to
   // seed the QuickPick when the user hasn't typed enough chars to
   // search yet.

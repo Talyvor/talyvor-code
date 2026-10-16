@@ -152,10 +152,10 @@ function renderIssueHTML(issue: TrackIssue): string {
 }
 
 // createIssueFromCodeCommand grabs the editor selection (or
-// surrounding context if nothing's selected) and seeds Track's
-// issue-creation form with an AI-suggested title plus the code
-// snippet. The Talyvor Code surface doesn't itself create issues
-// today — we hand off to Track via the URL.
+// the cursor's line if nothing's selected), copies a title plus the
+// code to the clipboard and opens Track. Track's app reads no
+// title or description from its URL, so the clipboard is the
+// handoff, and the message says so.
 export async function createIssueFromCodeCommand(
   config: LensConfig,
 ): Promise<void> {
@@ -183,6 +183,9 @@ export async function createIssueFromCodeCommand(
   const fence = "```" + lang;
   const description = `From ${editor.document.uri.fsPath}\n\n${fence}\n${code}\n\`\`\``;
   const title = code.split("\n")[0].trim().slice(0, 80) || "New issue from code";
-  const url = `${config.trackUrl.replace(/\/$/, "")}/new?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}`;
-  await vscode.env.openExternal(vscode.Uri.parse(url));
+  await vscode.env.clipboard.writeText(`${title}\n\n${description}`);
+  await vscode.env.openExternal(vscode.Uri.parse(config.trackUrl));
+  void vscode.window.showInformationMessage(
+    "Copied the title and code to your clipboard and opened Track — create the issue there and paste them in.",
+  );
 }
