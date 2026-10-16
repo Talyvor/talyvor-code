@@ -25,7 +25,8 @@ Extension id: **`talyvor.talyvor-code`**
 5. Run **`Talyvor: Test Lens Connection`**.
 
 From then on the agent's statement in Agent Wallets shows what it spent, call by call, and
-`Talyvor: Show AI Cost Dashboard` breaks the same spend down by issue. Topping up, pausing the agent
+`Talyvor: Show AI Cost Dashboard` shows what Lens recorded for the active issue over the last 30
+days — or says *not available* when Lens does not answer. Topping up, pausing the agent
 or tightening a rule takes effect on its next call — nothing to change in VS Code. A workspace key
 works too, but then the spend is billed to the workspace rather than to an agent's wallet.
 
@@ -45,6 +46,14 @@ every AI call failed. If Lens answers the key probe with anything other than 401
 reports what it always reported and claims nothing about the key, so an older Lens without that route
 still reads as connected.
 
+## Track and Docs need one the editor can reach
+
+The Track picker and the Docs commands talk to Track and Docs directly, with the key you set in
+`talyvor.trackApiKey` or `talyvor.docsApiKey`. A hosted Track or Docs only answers requests from
+your signed-in browser, so for most hosted users these commands stay hidden; they appear for a Track
+or Docs you run yourself and the editor can reach. Cost per issue does not need either — it comes
+from Lens.
+
 ## Requirements
 
 VS Code **1.85** or newer. No runtime dependencies are installed with the extension.
@@ -57,8 +66,9 @@ VS Code **1.85** or newer. No runtime dependencies are installed with the extens
 | **Inline completions** | Ghost-text completions as you type, through Lens (`talyvor.enableCompletions`, on by default). |
 | **Chat, explain, fix, refactor, tests** | `Talyvor: Open AI Chat` (⌘/Ctrl+Shift+L), plus explain / fix-error / refactor / generate-tests on the editor context menu. |
 | **An agent that edits files** | `Talyvor: Start Agent Task` (⌘/Ctrl+Shift+A) plans, edits and runs commands inside the workspace root. |
-| **Issue attribution** | Set an active Track issue (`Talyvor: Set Active Issue`) and every call is tagged with it; `Talyvor: Show AI Cost Dashboard` reads the spend back. |
-| **Docs** | Hover, search and ask against a Talyvor Docs space (`talyvor.docsUrl` — optional; without it these commands are inert). |
+| **Issue attribution** | Set an active issue (`talyvor.activeIssue`, e.g. `ENG-42`) and every call is tagged with it; `Talyvor: Show AI Cost Dashboard` shows that issue's spend over the last 30 days, as Lens recorded it. |
+| **Track** | `Talyvor: Set Active Issue` picks an issue from Track, and appears only when `talyvor.trackUrl` is set and that Track answers the editor's key. `Talyvor: Create Track Issue from Code` copies a title and the selected code to your clipboard and opens Track for you to paste them in. |
+| **Docs** | Search, ask and link pages from a Talyvor Docs space; these commands appear only when `talyvor.docsUrl` is set and that Docs answers the editor's key. |
 | **PR review** | `Talyvor: Review Current PR` / `Review Selected Code`, using a GitHub token you supply. |
 | **Claude Code, metered** | `Talyvor: Run Claude Code (metered by Lens)` opens a terminal running Claude Code through the Talyvor Code CLI, so its spend is billed by your Lens and attributed to the active issue. Needs the CLI — see below. |
 | **Semantic index** | `Talyvor: Build Semantic Index` builds a local index the agent retrieves from. It stays on your machine. |

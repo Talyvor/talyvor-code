@@ -104,6 +104,20 @@ export class DocsClient {
     };
   }
 
+  // reachable says whether this Docs answers this key at all, as TrackClient.reachable does.
+  async reachable(workspaceId: string): Promise<boolean> {
+    if (!this.isConfigured() || !workspaceId) return false;
+    try {
+      const res = await fetch(
+        `${this.baseURL()}/v1/workspaces/${encodeURIComponent(workspaceId)}/search?q=talyvor&limit=1`,
+        { headers: this.headers() },
+      );
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
   // searchDocs returns an empty array when Docs is unconfigured
   // OR the lookup fails. The hover and panel both degrade
   // gracefully — empty results just hide the suggestion.

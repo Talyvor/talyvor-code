@@ -36,12 +36,11 @@ export interface CompletionResponse {
   };
 }
 
-export interface CostInfo {
-  issueId: string;
-  totalCostUSD: number;
-  tokens: number;
-  lastUpdated: Date;
-}
+// IssueSpend is what Lens recorded for one issue over `days`, or available:false when Lens could
+// not answer — never a zero it did not read.
+export type IssueSpend =
+  | { available: true; issueId: string; totalCostUSD: number; tokens: number; requests: number; days: number }
+  | { available: false; issueId: string };
 
 // LensError carries the user-visible message + the original status
 // code so the extension can map specific failures (401 → "API key

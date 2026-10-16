@@ -10,6 +10,8 @@
 // only things stopping an understated figure from reading as the bill, which is why they are pinned
 // by a test rather than left to a code comment.
 
+import type { IssueSpend } from "../lens/types";
+
 /** The status-bar figure. The tilde is load-bearing: it marks the number as approximate. */
 export function formatSessionCost(usd: number): string {
   return `~$${usd.toFixed(2)}`;
@@ -32,4 +34,20 @@ export function costDisclaimerLines(activeIssue?: string): string[] {
       : "Track shows the real per-issue cost, recorded by Lens.",
   );
   return lines;
+}
+
+/**
+ * The dashboard's issue spend, as Lens recorded it, with the window it covers. When Lens did not
+ * answer it says so: a $0.00 here would read as "this issue cost nothing".
+ */
+export function issueSpendLabel(spend: IssueSpend): { figure: string; note: string } {
+  if (!spend.issueId) return { figure: "—", note: "set an active issue to see its spend" };
+  if (!spend.available) {
+    return { figure: "not available", note: "Lens did not answer for this issue's spend" };
+  }
+  const usd = spend.totalCostUSD;
+  return {
+    figure: `$${usd > 0 && usd < 0.01 ? usd.toFixed(4) : usd.toFixed(2)}`,
+    note: `${spend.requests} request${spend.requests === 1 ? "" : "s"} in the last ${spend.days} days, recorded by Lens`,
+  };
 }

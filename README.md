@@ -69,9 +69,9 @@ Open VS Code settings (⌘/Ctrl + `,`) and search for **talyvor**:
 | --- | --- |
 | `talyvor.lensUrl` | Your Lens URL (e.g. `https://lens.talyvor.com`, or `http://localhost:8080` for local dev — remote URLs must be https) |
 | `talyvor.lensApiKey` | Lens API key |
-| `talyvor.trackUrl` | (optional) Track base URL for issue lookup |
+| `talyvor.trackUrl` | (optional) Track base URL — the issue picker shows only when this Track answers the editor's key |
 | `talyvor.trackApiKey` | (optional) Track API key |
-| `talyvor.docsUrl` | (optional) Talyvor Docs URL — enables hover + panel |
+| `talyvor.docsUrl` | (optional) Talyvor Docs URL — the Docs commands show only when this Docs answers the editor's key |
 | `talyvor.docsApiKey` | (optional) Talyvor Docs API key |
 | `talyvor.workspaceId` | Your Talyvor workspace ID |
 | `talyvor.activeIssue` | e.g. `ENG-42` — settable via Command Palette |
@@ -87,11 +87,12 @@ Open VS Code settings (⌘/Ctrl + `,`) and search for **talyvor**:
 | Fix Error | ⌘/Ctrl + Shift + F1 | Fix the diagnostic under the cursor |
 | Generate Tests | ⌘/Ctrl + Shift + T | Generate tests for selection or file |
 | Start Agent | ⌘/Ctrl + Shift + A | Multi-file agentic task |
-| Search Docs | ⌘/Ctrl + Shift + D | Search Talyvor Docs inline |
-| Set Active Issue | Palette | QuickPick across recent Track issues |
-| Show Cost Dashboard | Palette | Per-issue, per-feature spend breakdown |
+| Search Docs | ⌘/Ctrl + Shift + D | Search Talyvor Docs inline (only when Docs is reachable) |
+| Set Active Issue | Palette | QuickPick across recent Track issues (only when Track is reachable) |
+| Create Track Issue from Code | Context menu | Copies a title and the selection to the clipboard and opens Track |
+| Show Cost Dashboard | Palette | The active issue's spend over the last 30 days, as Lens recorded it; per-feature session estimates |
 | Run Agent from Issue | Palette | Seed an agentic task from the active issue |
-| Ask Docs | Palette / context menu | Q&A grounded in your docs |
+| Ask Docs | Palette / context menu | Q&A grounded in your docs (only when Docs is reachable) |
 
 The status-bar item cycles through `$(warning) Talyvor: Setup required` → `$(sparkle) Talyvor | $0.00` → `$(sparkle) ENG-42 | $0.03` and triggers a Track cost sync every 5 minutes.
 

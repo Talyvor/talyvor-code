@@ -24,7 +24,7 @@ import { TestGenerator } from "./providers/test-generator";
 import { TestPanel } from "./panels/TestPanel";
 import { AgentPanel } from "./panels/AgentPanel";
 import { COST_CSS, estimateHTML } from "./panels/theme-pure";
-import { costDisclaimerLines, formatCostEstimate } from "./track/cost-label-pure";
+import { costDisclaimerLines, formatCostEstimate, issueSpendLabel } from "./track/cost-label-pure";
 import { IssueContextProvider } from "./track/issue-context";
 import { TalyvorStatusBar } from "./track/status-bar";
 import {
@@ -96,6 +96,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     tracker.onRecord(refreshStatusBar),
     statusBar.bindScopeManager(scopeManager),
   );
+
+  // The Track picker and the Docs commands are offered only where their URL is set and answers
+  // (package.json `when` clauses); otherwise they would open and do nothing.
+  const probeIntegrations = async () => {
+    const ws = TalyvorConfig.getLensConfig().workspaceId;
+    const [track, docs] = await Promise.all([trackClient.reachable(ws), docsClient.reachable(ws)]);
+    await vscode.commands.executeCommand("setContext", "talyvor.trackReachable", track);
+    await vscode.commands.executeCommand("setContext", "talyvor.docsReachable", docs);
+  };
+  void probeIntegrations();
 
   // Resolve the persisted active issue on startup so prompts pick
   // up the title/description without waiting for the first
@@ -269,6 +279,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       trackClient = new TrackClient(config.trackUrl, config.trackApiKey);
       docsClient = new DocsClient(config.docsUrl, config.docsApiKey);
       refreshStatusBar();
+      void probeIntegrations();
     }),
     statusBar,
   );
@@ -337,17 +348,14 @@ async function showCostDashboard(
     vscode.ViewColumn.Beside,
     { enableScripts: false, retainContextWhenHidden: true },
   );
-  const issueCost = await lens.getCostForIssue(
-    config.workspaceId,
-    config.activeIssue,
-  );
+  const issueSpend = await lens.getIssueSpend(config.activeIssue);
   const summary = tracker.getSessionSummary();
   const current = provider.getCurrentIssue();
   panel.webview.html = renderCostHTML(
     config.activeIssue || "(no active issue)",
     current?.title ?? "",
     current?.status ?? "",
-    issueCost.totalCostUSD,
+    issueSpendLabel(issueSpend),
     summary,
     config.model,
   );
@@ -357,7 +365,7 @@ function renderCostHTML(
   issueId: string,
   issueTitle: string,
   issueStatus: string,
-  issueTotalUsd: number,
+  issueSpend: { figure: string; note: string },
   session: ReturnType<CostTracker["getSessionSummary"]>,
   model: string,
 ): string {
@@ -387,7 +395,7 @@ function renderCostHTML(
 <h2 class="eyebrow">Current issue</h2>
 <dl class="kv">
   <dt class="eyebrow">Issue</dt><dd><span class="chip">${escapeHTML(issueId)}</span>${issueTitle ? " " + escapeHTML(issueTitle) : ""}${issueStatus ? ` <span class="tag">${escapeHTML(issueStatus)}</span>` : ""}</dd>
-  <dt class="eyebrow">Track total</dt><dd><span class="figure big">$${issueTotalUsd.toFixed(2)}</span> <span class="muted">recorded by Lens</span></dd>
+  <dt class="eyebrow">Issue spend</dt><dd><span class="figure big">${escapeHTML(issueSpend.figure)}</span> <span class="muted">${escapeHTML(issueSpend.note)}</span></dd>
   <dt class="eyebrow">This session</dt><dd>${estimateHTML(sessionContribution)}</dd>
 </dl>
 
@@ -412,7 +420,7 @@ ${
     : ""
 }
 
-<p class="muted">The Track total is recorded by Lens for every request. Figures marked est. are this editor's own count, ${costDisclaimerLines()[0].charAt(0).toLowerCase() + costDisclaimerLines()[0].slice(1)}</p>
+<p class="muted">Issue spend is what Lens recorded for every request tagged with this issue. Figures marked est. are this editor's own count, ${costDisclaimerLines()[0].charAt(0).toLowerCase() + costDisclaimerLines()[0].slice(1)}</p>
 </main>
 </body></html>`;
 }

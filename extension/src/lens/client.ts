@@ -6,7 +6,7 @@
 
 import {
   CompletionResponse,
-  CostInfo,
+  IssueSpend,
   LensError,
   Message,
 } from "./types";
@@ -294,46 +294,52 @@ export class LensClient {
     await consumeStream(res, provider, callbacks, signal);
   }
 
-  // getCostForIssue pulls the cumulative AI spend tied to the
-  // active issue from Lens analytics. Used by the cost-dashboard
-  // command. Returns a zeroed CostInfo when Lens is unconfigured
-  // or the lookup fails — the UI shows that gracefully as "$0.00".
-  async getCostForIssue(
-    workspaceId: string,
-    issueId: string,
-  ): Promise<CostInfo> {
-    const zero: CostInfo = {
-      issueId,
-      totalCostUSD: 0,
-      tokens: 0,
-      lastUpdated: new Date(),
-    };
-    if (!this.isConfigured() || !workspaceId || !issueId) return zero;
+  // getIssueSpend sums the issue's rows from /v1/api/spend/by-request, every page of the widest
+  // window Lens serves. Any failure is available:false, so the dashboard says "not available"
+  // instead of a $0.00 it never read.
+  async getIssueSpend(issueId: string): Promise<IssueSpend> {
+    const na: IssueSpend = { available: false, issueId };
+    if (!this.isConfigured() || !issueId) return na;
+    let totalCostUSD = 0;
+    let tokens = 0;
+    let requests = 0;
+    let cursor = "";
     try {
-      const res = await fetch(
-        `${this.url.replace(/\/$/, "")}/v1/workspaces/${encodeURIComponent(workspaceId)}/analytics/ai-costs?issue=${encodeURIComponent(issueId)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-          },
-        },
-      );
-      if (!res.ok) return zero;
-      const data = (await res.json()) as {
-        total_cost_usd?: number;
-        tokens?: number;
-      };
-      return {
-        issueId,
-        totalCostUSD: data.total_cost_usd ?? 0,
-        tokens: data.tokens ?? 0,
-        lastUpdated: new Date(),
-      };
+      // shortcut: gives up (not available) past ISSUE_SPEND_MAX_PAGES pages of the workspace's
+      // requests; ask Lens for an issue filter if a workspace ever gets there.
+      for (let page = 0; page < ISSUE_SPEND_MAX_PAGES; page++) {
+        const q = new URLSearchParams({ days: String(ISSUE_SPEND_DAYS), limit: "1000" });
+        if (cursor) q.set("cursor", cursor);
+        const res = await fetch(`${this.url.replace(/\/$/, "")}/v1/api/spend/by-request?${q}`, {
+          headers: { Authorization: `Bearer ${this.apiKey}` },
+        });
+        if (!res.ok) return na;
+        const data = (await res.json()) as {
+          rows?: { issue_id?: string; cost_usd?: number; input_tokens?: number; output_tokens?: number }[];
+          next_cursor?: string;
+        };
+        if (!Array.isArray(data.rows)) return na;
+        for (const r of data.rows) {
+          if (r.issue_id !== issueId) continue;
+          totalCostUSD += r.cost_usd ?? 0;
+          tokens += (r.input_tokens ?? 0) + (r.output_tokens ?? 0);
+          requests++;
+        }
+        if (!data.next_cursor) {
+          return { available: true, issueId, totalCostUSD, tokens, requests, days: ISSUE_SPEND_DAYS };
+        }
+        cursor = data.next_cursor;
+      }
+      return na;
     } catch {
-      return zero;
+      return na;
     }
   }
 }
+
+// Lens clamps by-request to 30 days, so that is the window the dashboard can state.
+export const ISSUE_SPEND_DAYS = 30;
+const ISSUE_SPEND_MAX_PAGES = 100;
 
 // consumeStream reads the SSE body, splits on the blank-line
 // delimiter, and dispatches each event to the right callback.
