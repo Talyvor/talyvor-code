@@ -43,7 +43,7 @@ object ConnReportPure {
             CredentialVerdict.REJECTED -> ConnectionReport(
                 true,
                 "❌ Lens is reachable, but it rejected your API key (HTTP $status). " +
-                    "Check the Lens API key in Settings — the URL is fine.",
+                    "Check the agent key in Settings — the URL is fine.",
             )
             CredentialVerdict.OK -> ConnectionReport(false, "✅ Connected to Lens v$version — API key verified")
             // The probe could not answer (an older Lens with no /v1/auth/me, a server-error reply, a

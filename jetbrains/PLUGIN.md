@@ -1,14 +1,12 @@
-# Talyvor Code for JetBrains — status & parity
+# Talyvor Code for JetBrains — status
 
 This document tracks what the JetBrains plugin actually does today,
 how it is built, and how to verify the surfaces that can't be
-unit-tested. It is the companion to `README.md` (install/configure)
-and is kept current as the plugin advances toward VS Code parity.
+unit-tested. It is the companion to `README.md` (install/configure).
 
-The plugin began as a Phase-1 scaffold. The increments below moved it
-toward functional parity with the `extension/` VS Code extension,
-porting the extension's `*-pure` modules to dependency-free Kotlin
-(unit-tested with JUnit) and wiring them into IDE surfaces.
+The plugin ports some of the `extension/` VS Code extension's `*-pure`
+modules to dependency-free Kotlin (unit-tested with JUnit) and wires
+them into IDE surfaces.
 
 ## Architecture: pure core, thin IDE shell
 
@@ -66,17 +64,17 @@ manual in-IDE checks (it can't be exercised without an IDE sandbox).
 
 ## Build & test
 
-Requires JDK 17. Nothing else: the Gradle wrapper is committed, so
-`./gradlew` provisions Gradle 8.7 itself — see `README.md`.
+Requires JDK 21. Nothing else: the Gradle wrapper is committed, so
+`./gradlew` provisions Gradle 9.8.1 itself — see `README.md`.
 
 ```bash
 cd jetbrains
 ./gradlew test          # run the JUnit pure-logic suites
-./gradlew test buildPlugin   # tests + the installable .zip (what CI runs)
+./gradlew test buildPlugin verifyPlugin   # what CI runs
 ```
 
 CI (`.github/workflows/ci.yaml`, `jetbrains` job) runs
-`./gradlew test buildPlugin` on every push/PR.
+`./gradlew test buildPlugin verifyPlugin` on every push/PR.
 
 Current suite: **49 tests, 0 failures** — `ModelsTest` (6),
 `SsePureTest` (15), `TestGenPureTest` (17), `ShellPureTest` (11).
@@ -107,24 +105,11 @@ surface works end-to-end.
    Command → describe a task → confirm a single command (no fences). Try
    a destructive description and confirm the warning dialog appears.
 
-## Not yet ported (deferred — see GitHub issues)
+## Not in the plugin
 
-These exist in the VS Code extension and remain open work. They were
-deferred tonight to keep each increment small, build-green, and (where
-possible) unit-tested. Filed as issues rather than silently skipped:
-
-- **Inline completions** (`registerInlineCompletionItemProvider`
-  equivalent via IntelliJ's completion API).
-- **Cost tracking + status bar + 5-min Track cost-sync** and the cost
-  dashboard (`getCostForIssue` analytics).
-- **Track integration**: set/show active issue, create issue from code.
-- **Docs integration**: panel, hover provider, search/ask/link,
-  spec-watcher.
-- **Agent mode** (multi-file tasks + self-heal loop).
-- **Rules / context / scope loaders** (`.talyvor-rules`,
-  `.talyvor-context`, `.talyvor-scopes`).
-- **Remaining editor actions**: Fix Error (diagnostics-aware), Refactor,
-  Review Selection / Review PR, Generate Tests for File.
-- **Settings parity**: expose `docsUrl`/`docsApiKey`/`githubToken`/
-  `enableCompletions` in the settings UI (the state fields for the first
-  two already exist; the latter two are not yet modelled).
+The VS Code extension has these and the plugin does not: inline
+completions; cost tracking, status bar and cost dashboard; Track
+commands; Docs commands; agent mode; `.talyvor-rules` /
+`.talyvor-context` / `.talyvor-scopes` loaders; Fix Error, Refactor,
+Review Selection / Review PR and Generate Tests for File. Its settings
+are the five fields in Settings → Tools → Talyvor Code and nothing else.

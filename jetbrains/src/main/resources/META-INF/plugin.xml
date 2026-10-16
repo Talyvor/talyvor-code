@@ -4,21 +4,15 @@
     <vendor email="hello@talyvor.com" url="https://github.com/Talyvor/talyvor-code">Talyvor</vendor>
 
     <description><![CDATA[
-        AI coding assistant powered by Talyvor Lens.
-        Every AI call is attributed to your active Track issue, so
-        engineering leaders can see exactly how much AI was used to
-        implement each feature.
+        An AI coding assistant that runs on its own Talyvor agent wallet.
+        Paste an agent key from Agent Wallets and every call it makes spends
+        only that agent's budget, under its rules, attributed to your active issue.
 
-        <h3>Phase 1 features</h3>
         <ul>
-            <li>Explain selected code (right-click → Talyvor → Explain Code)</li>
-            <li>Generate tests for a selection</li>
-            <li>AI chat tool window with issue-attributed cost</li>
+            <li>Right-click → Talyvor → Explain Code, Generate Tests, Open Chat</li>
+            <li>Talyvor Code tool window: streaming multi-turn chat</li>
+            <li>Tools → Talyvor → Test Lens Connection, Select AI Model, Generate Shell Command</li>
         </ul>
-
-        Full feature parity with the VS Code extension lands in
-        subsequent phases (inline completions, agentic mode, docs
-        integration).
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>

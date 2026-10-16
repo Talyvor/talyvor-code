@@ -126,7 +126,7 @@ class TalyvorSettingsConfigurable : Configurable {
 
         return FormBuilder.createFormBuilder()
             .addLabeledComponent("Lens URL:", lensUrlField)
-            .addLabeledComponent("Lens API key:", lensApiKeyField)
+            .addLabeledComponent("Agent key (from Agent Wallets):", lensApiKeyField)
             .addLabeledComponent("Workspace ID:", workspaceIdField)
             .addLabeledComponent("Active issue:", activeIssueField)
             .addLabeledComponent("Model:", modelField)
