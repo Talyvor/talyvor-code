@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { newRunTool } from "./loop-tools";
+import { resolveProgram } from "./exec-plan";
 
 // B42.8 — the run tool never hands model text to a shell. Every command is APPROVED, so only the
 // executor stands between it and a shell; any interpreted metacharacter would leave a `pwned` file
@@ -38,4 +39,19 @@ test("approved commands with shell metacharacters run no shell", { skip: process
   await run("false || touch or-ran");
   assert.equal(fs.existsSync(path.join(root, "and-ran")), false, "&& ran its right side after a failure");
   assert.equal(fs.existsSync(path.join(root, "or-ran")), true, "|| did not run its right side after a failure");
+});
+
+// On Windows libuv searches the cwd before PATH; resolveProgram must not, so a go.exe planted in the
+// workspace never runs as `go`.
+test("on Windows a bare program name is never found in the cwd", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "talyvor-plant-"));
+  fs.writeFileSync(path.join(root, "go.exe"), "");
+  const cwd = process.cwd();
+  process.chdir(root);
+  try {
+    assert.throws(() => resolveProgram("go", "win32", { PATH: ".;go-bin", PATHEXT: ".EXE" }), /not found on PATH/);
+  } finally {
+    process.chdir(cwd);
+  }
+  assert.equal(resolveProgram("go", "linux", {}), "go");
 });

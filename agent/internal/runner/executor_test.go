@@ -197,3 +197,17 @@ func TestIsSuccess(t *testing.T) {
 		t.Fatal("nil should not be success")
 	}
 }
+
+// TestBatchArgError — B42.8: a .cmd shim with a cmd.exe metacharacter in an argument is refused;
+// the same argument to an .exe, or a plain argument to a .cmd, is not.
+func TestBatchArgError(t *testing.T) {
+	if batchArgError(`C:\node\npm.cmd`, []string{"test", "a&calc"}) == nil {
+		t.Error("an & in an argument to npm.cmd must be refused")
+	}
+	if err := batchArgError(`C:\node\npm.cmd`, []string{"test", "./..."}); err != nil {
+		t.Errorf("a plain argument to npm.cmd must run: %v", err)
+	}
+	if err := batchArgError(`C:\go\bin\go.exe`, []string{"a&b"}); err != nil {
+		t.Errorf("an .exe gets its arguments without cmd.exe: %v", err)
+	}
+}
