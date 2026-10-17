@@ -920,17 +920,8 @@ type readFileArgs struct {
 // above already had. (SetAuthToken's docstring made the same choice for the same class of
 // misconfiguration in the other direction — empty token fails closed. Empty root now does too.)
 func (s *Server) confinedReadPath(p string) (string, error) {
-	rootAbs, err := filepath.Abs(s.rootOrDot())
+	abs, err := codebase.Confine(s.rootOrDot(), p)
 	if err != nil {
-		return "", err
-	}
-	abs := p
-	if !filepath.IsAbs(abs) {
-		abs = filepath.Join(rootAbs, abs)
-	}
-	abs = filepath.Clean(abs)
-	rel, err := filepath.Rel(rootAbs, abs)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("refusing to read outside workspace root")
 	}
 	return abs, nil

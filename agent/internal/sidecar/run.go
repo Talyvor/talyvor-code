@@ -99,6 +99,7 @@ func Run(cfg Config, command []string, io_ Stdio, started func(*Sidecar)) (int, 
 		started(s)
 	}
 
+	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command -- `talyvor-code exec -- <cmd>` runs the argv the developer typed, as a list, never through a shell
 	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = io_.In, io_.Out, io_.Err
 	cmd.Env = s.ChildEnv(os.Environ())

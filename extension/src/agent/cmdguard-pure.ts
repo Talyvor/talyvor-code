@@ -88,6 +88,8 @@ export const flagsTakingValue: Record<string, ReadonlySet<string>> = {
 interface Segment {
   tokens: string[];
   afterPipe: boolean;
+  /** the operator joining this segment to the previous one: "", ";", "&&", "||" or "|" */
+  op: string;
 }
 
 class ParseError extends Error {}
@@ -132,17 +134,17 @@ export function check(command: string): Verdict {
 function split(cmd: string): Segment[] {
   const segs: Segment[] = [];
   let cur = "";
-  let afterPipe = false;
+  let op = "";
   let quote = "";
 
-  const flush = (nextAfterPipe: boolean): void => {
+  const flush = (next: string): void => {
     const text = cur.trim();
     cur = "";
     if (text !== "") {
       const toks = tokenize(text);
-      if (toks.length > 0) segs.push({ tokens: toks, afterPipe });
+      if (toks.length > 0) segs.push({ tokens: toks, afterPipe: op === "|", op });
     }
-    afterPipe = nextAfterPipe;
+    op = next;
   };
 
   const rs = [...cmd];
@@ -161,11 +163,11 @@ function split(cmd: string): Segment[] {
       // every escape, refuse and let the user confirm explicitly.
       throw new ParseError("backslash escaping — refused rather than guessed");
     } else if (c === ";" || c === "\n") {
-      flush(false);
+      flush(";");
     } else if (c === "&") {
       if (i + 1 < rs.length && rs[i + 1] === "&") {
         i++;
-        flush(false);
+        flush("&&");
       } else {
         // A lone & backgrounds the command; it then outlives the timeout that is the only bound
         // this tool had.
@@ -174,18 +176,56 @@ function split(cmd: string): Segment[] {
     } else if (c === "|") {
       if (i + 1 < rs.length && rs[i + 1] === "|") {
         i++;
-        flush(false);
+        flush("||");
       } else {
-        flush(true);
+        flush("|");
       }
     } else {
       cur += c;
     }
   }
   if (quote !== "") throw new ParseError("unbalanced quote — the command cannot be parsed");
-  flush(false);
+  flush("");
   if (segs.length === 0) throw new ParseError("no command found");
   return segs;
+}
+
+/** Step is one simple command as exec-plan runs it, with NO shell in between: argv[0] is the
+ *  program and the rest its arguments exactly as tokenised, env holds leading NAME=value
+ *  assignments, and op joins it to the previous step ("", ";", "&&", "||" or "|"). */
+export interface Step {
+  argv: string[];
+  env: string[];
+  op: string;
+}
+
+/** plan turns a command into the steps that run it as argument lists, so no text — model-authored
+ *  or not — is ever handed to sh -c. It throws on everything check() refuses, and on redirects:
+ *  with no shell nothing would perform them. $VAR, * and ~ reach the program literally.
+ *  The port of agent/internal/cmdguard Plan. */
+export function plan(command: string): Step[] {
+  const v = check(command);
+  if (v.decision === "refuse") throw new ParseError(v.reason);
+  const steps: Step[] = [];
+  for (const seg of split(command.trim())) {
+    const st: Step = { argv: [], env: [], op: seg.op };
+    let toks = seg.tokens;
+    while (toks.length > 0 && /^[A-Za-z_][A-Za-z0-9_]*=/.test(toks[0])) {
+      st.env.push(toks[0]);
+      toks = toks.slice(1);
+    }
+    if (toks.length === 0) throw new ParseError(`${st.env.join(" ")} sets a variable but runs no command`);
+    for (const t of toks) {
+      if (t.startsWith(">") || t.startsWith("<")) {
+        throw new ParseError(
+          `${toks[0]} redirects (${t}), and commands run without a shell — read the output instead, or write files with the edit tool`,
+        );
+      }
+    }
+    st.argv = toks;
+    steps.push(st);
+  }
+  return steps;
 }
 
 /** tokenize splits one simple command into tokens, stripping surrounding quotes. */

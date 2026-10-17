@@ -96,6 +96,7 @@ function matchSegments(pat: string[], segs: string[]): boolean {
 // path segment: `*` matches anything but `/`, `?` matches a
 // single char (not `/`), and `[…]` runs are honoured.
 function segmentMatches(pattern: string, name: string): boolean {
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp -- globToRegex escapes every regex metacharacter; the only quantifier it emits is [^/]*, so no backtracking blow-up
   return new RegExp("^" + globToRegex(pattern) + "$").test(name);
 }
 

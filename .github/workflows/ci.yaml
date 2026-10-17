@@ -162,6 +162,19 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
           cd agent && "$(go env GOPATH)/bin/govulncheck" ./...
 
+  # Semgrep's managed default ruleset, pinned by version and digest as Track's and Docs' CI are
+  # (B42.8). Fails on ERROR severity; every WARNING it reports is fixed or carries a nosemgrep reason
+  # in place.
+  semgrep:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    container:
+      image: semgrep/semgrep:1.165.0@sha256:f4791a54c891eabe1188248135574e6e03dfc31dfd3f3b747c7bec7079bfed1b
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - run: semgrep scan --config p/default --metrics=off --severity ERROR --error --quiet
+
   gitleaks:
     runs-on: ubuntu-latest
     steps:

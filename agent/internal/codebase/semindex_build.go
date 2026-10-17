@@ -20,8 +20,13 @@ func contentHash(content string) string {
 }
 
 // Confine resolves p against root and REFUSES any path that escapes it (the S11
-// discipline: the walker/chunker reads only inside the repo root). Mirrors the
-// agent's write-side confine so the index read path holds the same boundary.
+// discipline: the walker/chunker reads only inside the repo root). The agent's write-side
+// confine and the MCP server's read path both call it, so all three hold one boundary.
+//
+// ⚠ LEXICAL CONTAINMENT IS NOT ENOUGH: `link -> /etc` inside the root passes a ".." check and
+// reads /etc/passwd as link/passwd. So the deepest part of the path that exists is resolved with
+// its symlinks and must still lie under the resolved root; a dangling symlink is refused, because
+// writing through it would create its target wherever that is.
 func Confine(root, p string) (string, error) {
 	rootAbs, err := filepath.Abs(root)
 	if err != nil {
@@ -33,11 +38,31 @@ func Confine(root, p string) (string, error) {
 	} else {
 		abs = filepath.Clean(filepath.Join(rootAbs, p))
 	}
-	rel, err := filepath.Rel(rootAbs, abs)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		return "", fmt.Errorf("codebase: refusing path outside root %q: %s", rootAbs, p)
+	refuse := fmt.Errorf("codebase: refusing path outside root %q: %s", rootAbs, p)
+	// A prefix check on the cleaned path, inline, so path-injection analysis sees the guard.
+	if abs != rootAbs && !strings.HasPrefix(abs, strings.TrimSuffix(rootAbs, string(os.PathSeparator))+string(os.PathSeparator)) {
+		return "", refuse
+	}
+	rootReal, err := filepath.EvalSymlinks(rootAbs)
+	if err != nil {
+		return abs, nil // no root on disk, so nothing under it exists to link anywhere
+	}
+	for cur := abs; cur != rootAbs && cur != filepath.Dir(cur); cur = filepath.Dir(cur) {
+		if _, err := os.Lstat(cur); err != nil {
+			continue // not created yet; its nearest existing ancestor decides
+		}
+		real, err := filepath.EvalSymlinks(cur)
+		if err != nil || !within(rootReal, real) {
+			return "", refuse
+		}
+		break
 	}
 	return abs, nil
+}
+
+func within(root, p string) bool {
+	rel, err := filepath.Rel(root, p)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
 }
 
 // embeddableLang reports whether a detected language is worth embedding. Unknown /

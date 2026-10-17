@@ -14,11 +14,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
+	"sync"
 	"time"
+
+	"github.com/talyvor/code/internal/cmdguard"
 )
 
 // Language is a typed enum so callers don't have to remember the
@@ -120,61 +125,163 @@ func hasNPMTestScript(path string) (bool, error) {
 	return ok, nil
 }
 
-// Run executes `command` via the host's POSIX shell (or
-// PowerShell on Windows). Stdout + stderr are captured verbatim;
-// a non-zero exit is NOT an error — the caller decides what to
-// do with the captured output. The supplied timeout kills the
-// process if it overstays its welcome.
+// Run executes `command` WITHOUT a shell. cmdguard.Plan splits it into simple commands joined by |,
+// &&, || and ;, and each one starts as a program with an argument list — so no string, model-authored
+// or typed, ever reaches sh -c or powershell, and a metacharacter Plan does not interpret arrives at
+// the program as a literal argument instead of being executed. Stdout + stderr are captured verbatim;
+// a non-zero exit is NOT an error — the caller decides what to do with the captured output. A command
+// Plan refuses exits 2 and a program that cannot start exits 127, as they would under a shell, so the
+// caller sees an observation rather than an error. The timeout kills every process still running.
 func Run(ctx context.Context, command, workDir string, timeout time.Duration) (*ExecutionResult, error) {
 	if timeout <= 0 {
 		timeout = 60 * time.Second
 	}
 	rctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(rctx, "powershell", "-NoProfile", "-Command", command)
-	} else {
-		cmd = exec.CommandContext(rctx, "sh", "-c", command)
-	}
-	if workDir != "" {
-		cmd.Dir = workDir
-	}
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	var stdout bytes.Buffer
+	stderr := &lockedBuffer{}
 	start := time.Now()
-	err := cmd.Run()
-	duration := time.Since(start)
 	exitCode := 0
+	steps, err := cmdguard.Plan(command)
 	if err != nil {
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			exitCode = ee.ExitCode()
-			err = nil
-		} else if rctx.Err() == context.DeadlineExceeded {
-			// Context timeout fires before the process produces an
-			// ExitError on some platforms — synthesise a non-zero
-			// exit so callers can detect the failure.
-			exitCode = 124
-			err = nil
-		} else {
-			return &ExecutionResult{
-				Command:  command,
-				Stdout:   stdout.String(),
-				Stderr:   stderr.String(),
-				ExitCode: -1,
-				Duration: duration,
-			}, err
+		fmt.Fprintf(stderr, "not run: %v\n", err)
+		exitCode = 2
+	}
+	// Shell list semantics: && runs on success, || on failure, ; always; the status is the last
+	// pipeline's that ran.
+	for i := 0; i < len(steps); {
+		j := i + 1
+		for j < len(steps) && steps[j].Op == "|" {
+			j++
 		}
+		op := steps[i].Op
+		if i == 0 || op == ";" || (op == "&&" && exitCode == 0) || (op == "||" && exitCode != 0) {
+			exitCode = runPipeline(rctx, steps[i:j], workDir, &stdout, stderr)
+		}
+		i = j
+	}
+	if rctx.Err() == context.DeadlineExceeded {
+		exitCode = 124
 	}
 	return &ExecutionResult{
 		Command:  command,
 		Stdout:   stdout.String(),
 		Stderr:   stderr.String(),
 		ExitCode: exitCode,
-		Duration: duration,
+		Duration: time.Since(start),
 	}, nil
+}
+
+// runPipeline starts each step with its stdout piped into the next one's stdin and returns the last
+// step's exit status.
+func runPipeline(ctx context.Context, steps []cmdguard.Step, dir string, stdout, stderr io.Writer) int {
+	cmds := make([]*exec.Cmd, len(steps))
+	for i, st := range steps {
+		// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command -- an argument list from cmdguard.Plan, never a shell; the agent's run tool admits the program through cmdguard.Check or the user's confirmation
+		c := exec.CommandContext(ctx, st.Argv[0], st.Argv[1:]...)
+		c.Dir = dir
+		if len(st.Env) > 0 {
+			c.Env = append(os.Environ(), st.Env...)
+		}
+		c.Stderr = stderr
+		// c.Path is what Start will run, so the check sees exactly that program.
+		if runtime.GOOS == "windows" && c.Err == nil {
+			if err := batchArgError(c.Path, st.Argv[1:]); err != nil {
+				fmt.Fprintf(stderr, "not run: %v\n", err)
+				return 2
+			}
+		}
+		cmds[i] = c
+	}
+	last := len(cmds) - 1
+	cmds[last].Stdout = stdout
+	var ends []*os.File
+	defer func() {
+		for _, f := range ends {
+			_ = f.Close()
+		}
+	}()
+	for i := 0; i < last; i++ {
+		r, w, err := os.Pipe()
+		if err != nil {
+			fmt.Fprintf(stderr, "pipe: %v\n", err)
+			return 1
+		}
+		cmds[i].Stdout, cmds[i+1].Stdin = w, r
+		ends = append(ends, r, w)
+	}
+	started := make([]bool, len(cmds))
+	code := 0
+	for i, c := range cmds {
+		if err := c.Start(); err != nil {
+			fmt.Fprintf(stderr, "%s: %v\n", steps[i].Argv[0], err)
+			if i == last {
+				code = 127
+			}
+			continue
+		}
+		started[i] = true
+	}
+	// The children hold their own copies; ours must close so each reader sees EOF.
+	for _, f := range ends {
+		_ = f.Close()
+	}
+	ends = nil
+	for i, c := range cmds {
+		if !started[i] {
+			continue
+		}
+		err := c.Wait()
+		if i != last {
+			continue
+		}
+		var ee *exec.ExitError
+		switch {
+		case err == nil:
+			code = 0
+		case errors.As(err, &ee):
+			code = ee.ExitCode()
+		default:
+			fmt.Fprintf(stderr, "%s: %v\n", steps[i].Argv[0], err)
+			code = 1
+		}
+	}
+	return code
+}
+
+// batchArgError refuses an argument cmd.exe would act on unless the program is an .exe or .com.
+// Windows runs a .bat or .cmd (npm, yarn and pnpm are) through cmd.exe and Go's argument quoting does
+// not escape its metacharacters, so `npm test "a&calc"` would run calc (BatBadBut). It fails closed:
+// any other extension — .cmd, none, or a trailing-dot spelling — gets the check.
+func batchArgError(program string, args []string) error {
+	if ext := strings.ToLower(filepath.Ext(program)); ext == ".exe" || ext == ".com" {
+		return nil
+	}
+	for _, a := range args {
+		if strings.ContainsAny(a, "&|<>^%!\"\r\n") {
+			return fmt.Errorf("%s may run through cmd.exe and %q holds a character cmd.exe would act on", filepath.Base(program), a)
+		}
+	}
+	return nil
+}
+
+// lockedBuffer lets every process in a pipeline write stderr into one buffer: os/exec copies each
+// Cmd's output on its own goroutine.
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }
 
 // IsSuccess returns true when the process exited cleanly.

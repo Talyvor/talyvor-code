@@ -23,6 +23,7 @@ package cmdguard
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -140,10 +141,12 @@ func Check(command string) Verdict {
 	return Verdict{Allow, ""}
 }
 
-// segment is one simple command plus whether it followed a pipe.
+// segment is one simple command plus the operator that joined it to the one before it ("" for the
+// first, otherwise ";", "&&", "||" or "|").
 type segment struct {
 	tokens    []string
 	afterPipe bool
+	op        string
 }
 
 // split breaks a command on the shell operators that start a NEW command, honouring quotes so a
@@ -151,12 +154,12 @@ type segment struct {
 // refuses anything outside it, because the alternative — guessing — is how a prefix match fails.
 func split(cmd string) ([]segment, error) {
 	var (
-		segs      []segment
-		cur       []rune
-		afterPipe bool
-		quote     rune
+		segs  []segment
+		cur   []rune
+		op    string
+		quote rune
 	)
-	flush := func(nextAfterPipe bool) error {
+	flush := func(next string) error {
 		text := strings.TrimSpace(string(cur))
 		cur = nil
 		if text != "" {
@@ -165,10 +168,10 @@ func split(cmd string) ([]segment, error) {
 				return err
 			}
 			if len(toks) > 0 {
-				segs = append(segs, segment{tokens: toks, afterPipe: afterPipe})
+				segs = append(segs, segment{tokens: toks, afterPipe: op == "|", op: op})
 			}
 		}
-		afterPipe = nextAfterPipe
+		op = next
 		return nil
 	}
 
@@ -191,13 +194,13 @@ func split(cmd string) ([]segment, error) {
 			// model every escape, refuse and let the user confirm explicitly.
 			return nil, fmt.Errorf("backslash escaping — refused rather than guessed")
 		case ';', '\n':
-			if err := flush(false); err != nil {
+			if err := flush(";"); err != nil {
 				return nil, err
 			}
 		case '&':
 			if i+1 < len(rs) && rs[i+1] == '&' {
 				i++
-				if err := flush(false); err != nil {
+				if err := flush("&&"); err != nil {
 					return nil, err
 				}
 			} else {
@@ -208,11 +211,11 @@ func split(cmd string) ([]segment, error) {
 		case '|':
 			if i+1 < len(rs) && rs[i+1] == '|' {
 				i++
-				if err := flush(false); err != nil {
+				if err := flush("||"); err != nil {
 					return nil, err
 				}
 			} else {
-				if err := flush(true); err != nil {
+				if err := flush("|"); err != nil {
 					return nil, err
 				}
 			}
@@ -223,13 +226,58 @@ func split(cmd string) ([]segment, error) {
 	if quote != 0 {
 		return nil, fmt.Errorf("unbalanced quote — the command cannot be parsed")
 	}
-	if err := flush(false); err != nil {
+	if err := flush(""); err != nil {
 		return nil, err
 	}
 	if len(segs) == 0 {
 		return nil, fmt.Errorf("no command found")
 	}
 	return segs, nil
+}
+
+// Step is one simple command as the runner executes it, with NO shell in between: Argv[0] is the
+// program and the rest are its arguments exactly as tokenised, Env holds any leading NAME=value
+// assignments, and Op is the operator joining it to the previous step ("", ";", "&&", "||" or "|").
+type Step struct {
+	Argv []string
+	Env  []string
+	Op   string
+}
+
+var assignment = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*=`)
+
+// Plan turns a command into the steps that run it as argument lists, so no text — model-authored or
+// typed — is ever handed to sh -c. It refuses everything Check refuses, and redirects too: with no
+// shell nothing would perform them, and running `go test > out` as `go test ">" out` would quietly do
+// something other than what it says. Anything else a shell would interpret ($VAR, *, ~) reaches the
+// program literally, because there is no shell to expand it.
+func Plan(command string) ([]Step, error) {
+	if v := Check(command); v.Decision == Refuse {
+		return nil, fmt.Errorf("%s", v.Reason)
+	}
+	segs, err := split(strings.TrimSpace(command))
+	if err != nil {
+		return nil, err
+	}
+	steps := make([]Step, 0, len(segs))
+	for _, seg := range segs {
+		st := Step{Op: seg.op}
+		toks := seg.tokens
+		for len(toks) > 0 && assignment.MatchString(toks[0]) {
+			st.Env, toks = append(st.Env, toks[0]), toks[1:]
+		}
+		if len(toks) == 0 {
+			return nil, fmt.Errorf("%s sets a variable but runs no command", strings.Join(st.Env, " "))
+		}
+		for _, t := range toks {
+			if strings.HasPrefix(t, ">") || strings.HasPrefix(t, "<") {
+				return nil, fmt.Errorf("%s redirects (%s), and commands run without a shell — read the output instead, or write files with the edit tool", toks[0], t)
+			}
+		}
+		st.Argv = toks
+		steps = append(steps, st)
+	}
+	return steps, nil
 }
 
 // tokenize splits one simple command into tokens, stripping surrounding quotes.

@@ -215,6 +215,7 @@ export function readConfined(root: string, relPath: string, maxBytes = MAX_FILE_
 // outside the workspace root.
 export function walkRepo(root: string, maxFiles = DEFAULT_MAX_FILES): FileEntry[] {
   if (maxFiles <= 0) maxFiles = DEFAULT_MAX_FILES;
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- the workspace root itself, the boundary absolutise checks against
   const rootAbs = path.resolve(root);
   const out: FileEntry[] = [];
 
@@ -231,6 +232,7 @@ export function walkRepo(root: string, maxFiles = DEFAULT_MAX_FILES): FileEntry[
       if (out.length >= maxFiles) return;
       if (d.isDirectory()) {
         if (SKIP_DIRS.has(d.name)) continue;
+        // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- a directory entry from readdirSync; symlinks are never recursed
         walk(path.join(dir, d.name));
         continue;
       }
@@ -238,6 +240,7 @@ export function walkRepo(root: string, maxFiles = DEFAULT_MAX_FILES): FileEntry[
       if (SKIP_SUFFIXES.some((s) => d.name.endsWith(s))) continue;
       const lang = detectLanguage(d.name);
       if (!embeddableLang(lang)) continue;
+      // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- a directory entry from readdirSync, read only through readConfined (absolutise)
       const abs = path.join(dir, d.name);
       const rel = path.relative(rootAbs, abs);
       let content: string;
@@ -318,6 +321,7 @@ export async function buildIncremental(
   const newVecs = await embedChunks(emb, newChunks);
   return {
     version: INDEX_VERSION,
+    // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- records the root the user opened; nothing is read through it here
     root: path.resolve(root),
     embed_model: DEFAULT_EMBED_MODEL,
     file_hashes: fileHashes,
@@ -342,6 +346,7 @@ export function saveIndex(idx: SemanticIndex, targetPath: string): void {
   const dir = path.dirname(targetPath);
   fs.mkdirSync(dir, { recursive: true });
   const data = JSON.stringify(idx);
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- a fixed temp-file name in the index directory
   const tmp = path.join(dir, `.codebase-index-${process.pid}-${idx.chunks.length}.tmp`);
   try {
     const fd = fs.openSync(tmp, "w");

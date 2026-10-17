@@ -54,6 +54,7 @@ export interface Embedder {
 
 // indexPath is the LOCAL, confined location of the persisted index under a repo root.
 export function indexPath(root: string): string {
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- fixed directory and file names under the workspace root
   return path.join(root, INDEX_DIR, INDEX_FILE);
 }
 

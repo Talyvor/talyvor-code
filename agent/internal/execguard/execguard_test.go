@@ -67,13 +67,13 @@ var shellInterpreters = map[string]bool{
 // SECOND site added to a file already on the list — which is the cheapest way
 // to add an ungated path. The count catches both a new file and a new site in
 // an old one, and ignores movement.
+//
+// B42.8 took the agent's run tool, the heal loop and their extension twins off the shell: they now
+// execute cmdguard's argument lists. The one site left is `shell --run`, whose whole job is to run a
+// shell command the user has read and confirmed.
 var expected = map[string]int{
 	// Go: POSIX + PowerShell branches of the same call.
-	"agent/internal/runner/executor.go": 2,
 	"agent/internal/shell/generator.go": 2,
-	// TypeScript: same two-branch shape.
-	"extension/src/agent/loop-tools.ts": 2,
-	"extension/src/agent/heal.ts":       2,
 }
 
 // repoRoot walks up for the directory holding both trees. ⚠ IT FAILS LOUDLY
@@ -298,11 +298,20 @@ func TestEveryShellReachingSiteIsAccountedFor(t *testing.T) {
 func TestTheCensusCanSeeAShellSiteAtAll(t *testing.T) {
 	root := repoRoot(t)
 	if n := len(goShellSites(t, root)); n == 0 {
-		t.Error("the Go scanner found no shell-reaching site; agent/internal/runner and " +
-			"agent/internal/shell both call exec.CommandContext(\"sh\", \"-c\", …)")
+		t.Error("the Go scanner found no shell-reaching site; agent/internal/shell " +
+			"calls exec.CommandContext(\"sh\", \"-c\", …)")
 	}
-	if n := len(tsShellSites(t, root)); n == 0 {
-		t.Error("the TypeScript scanner found no shell-reaching site; loop-tools.ts and " +
-			"heal.ts both call spawn(\"sh\", [\"-c\", …])")
+	// B42.8 left the extension with no shell site at all, so its scanner is armed on a fixture.
+	fixture := t.TempDir()
+	src := filepath.Join(fixture, "extension", "src")
+	if err := os.MkdirAll(src, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "probe.ts"),
+		[]byte("import { spawn } from \"child_process\";\nspawn(\"sh\", [\"-c\", cmd]);\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(tsShellSites(t, fixture)); n == 0 {
+		t.Error("the TypeScript scanner did not see spawn(\"sh\", [\"-c\", …]) in a fixture")
 	}
 }
