@@ -207,6 +207,9 @@ func TestBatchArgError(t *testing.T) {
 	if err := batchArgError(`C:\node\npm.cmd`, []string{"test", "./..."}); err != nil {
 		t.Errorf("a plain argument to npm.cmd must run: %v", err)
 	}
+	if batchArgError(`C:\node\npm.cmd.`, []string{"a&calc"}) == nil {
+		t.Error("a trailing-dot spelling of a .cmd must be refused too")
+	}
 	if err := batchArgError(`C:\go\bin\go.exe`, []string{"a&b"}); err != nil {
 		t.Errorf("an .exe gets its arguments without cmd.exe: %v", err)
 	}

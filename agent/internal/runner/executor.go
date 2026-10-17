@@ -177,14 +177,6 @@ func Run(ctx context.Context, command, workDir string, timeout time.Duration) (*
 func runPipeline(ctx context.Context, steps []cmdguard.Step, dir string, stdout, stderr io.Writer) int {
 	cmds := make([]*exec.Cmd, len(steps))
 	for i, st := range steps {
-		if runtime.GOOS == "windows" {
-			if p, err := exec.LookPath(st.Argv[0]); err == nil {
-				if err := batchArgError(p, st.Argv[1:]); err != nil {
-					fmt.Fprintf(stderr, "not run: %v\n", err)
-					return 2
-				}
-			}
-		}
 		// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command -- an argument list from cmdguard.Plan, never a shell; the agent's run tool admits the program through cmdguard.Check or the user's confirmation
 		c := exec.CommandContext(ctx, st.Argv[0], st.Argv[1:]...)
 		c.Dir = dir
@@ -192,6 +184,13 @@ func runPipeline(ctx context.Context, steps []cmdguard.Step, dir string, stdout,
 			c.Env = append(os.Environ(), st.Env...)
 		}
 		c.Stderr = stderr
+		// c.Path is what Start will run, so the check sees exactly that program.
+		if runtime.GOOS == "windows" && c.Err == nil {
+			if err := batchArgError(c.Path, st.Argv[1:]); err != nil {
+				fmt.Fprintf(stderr, "not run: %v\n", err)
+				return 2
+			}
+		}
 		cmds[i] = c
 	}
 	last := len(cmds) - 1
@@ -250,16 +249,17 @@ func runPipeline(ctx context.Context, steps []cmdguard.Step, dir string, stdout,
 	return code
 }
 
-// batchArgError refuses an argument cmd.exe would act on when the program is a .bat or .cmd (npm,
-// yarn and pnpm are): Windows runs those through cmd.exe and Go's argument quoting does not escape
-// its metacharacters, so `npm test "a&calc"` would run calc (BatBadBut).
+// batchArgError refuses an argument cmd.exe would act on unless the program is an .exe or .com.
+// Windows runs a .bat or .cmd (npm, yarn and pnpm are) through cmd.exe and Go's argument quoting does
+// not escape its metacharacters, so `npm test "a&calc"` would run calc (BatBadBut). It fails closed:
+// any other extension — .cmd, none, or a trailing-dot spelling — gets the check.
 func batchArgError(program string, args []string) error {
-	if ext := strings.ToLower(filepath.Ext(program)); ext != ".bat" && ext != ".cmd" {
+	if ext := strings.ToLower(filepath.Ext(program)); ext == ".exe" || ext == ".com" {
 		return nil
 	}
 	for _, a := range args {
 		if strings.ContainsAny(a, "&|<>^%!\"\r\n") {
-			return fmt.Errorf("%s is a batch file and %q holds a character cmd.exe would act on", filepath.Base(program), a)
+			return fmt.Errorf("%s may run through cmd.exe and %q holds a character cmd.exe would act on", filepath.Base(program), a)
 		}
 	}
 	return nil

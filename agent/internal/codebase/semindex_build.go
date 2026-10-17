@@ -39,7 +39,8 @@ func Confine(root, p string) (string, error) {
 		abs = filepath.Clean(filepath.Join(rootAbs, p))
 	}
 	refuse := fmt.Errorf("codebase: refusing path outside root %q: %s", rootAbs, p)
-	if !within(rootAbs, abs) {
+	// A prefix check on the cleaned path, inline, so path-injection analysis sees the guard.
+	if abs != rootAbs && !strings.HasPrefix(abs, strings.TrimSuffix(rootAbs, string(os.PathSeparator))+string(os.PathSeparator)) {
 		return "", refuse
 	}
 	rootReal, err := filepath.EvalSymlinks(rootAbs)
