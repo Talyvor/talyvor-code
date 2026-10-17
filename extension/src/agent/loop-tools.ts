@@ -10,10 +10,10 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import { spawn } from "child_process";
 import { absolutise } from "./confine-pure";
 import { renderUnifiedDiff, type DiffLine } from "./agent-pure";
 import { check } from "./cmdguard-pure";
+import { runPlanned } from "./exec-plan";
 import { Registry, type Message, type Model, type Tool } from "./loop-pure";
 import type { RetrievedChunk } from "./retrieval-pure";
 
@@ -100,43 +100,16 @@ interface RunResult {
   output: string;
 }
 
-// runCommand executes a build/test/shell command through `sh -c` (POSIX) / powershell
-// (Windows) in the workspace root. The command IS the agent tool's explicit payload —
-// running the model's chosen build/test command is the whole point of the `run` tool —
-// so a non-literal spawn is by design, NOT an injection sink: `cmd` is the ONLY thing
-// placed in the shell (no path/filename is interpolated into the command string), the
-// cwd is the confined workspace root, and there is a hard timeout. This mirrors the CLI
-// loop's `internal/runner` (which chose `sh -c` over arg-vector exec so pipes/&& work)
-// and the extension's existing heal.ts runBuild. The nosemgrep below documents that
-// intent for the dangerous-spawn-shell rule.
-function runCommand(cmd: string, cwd: string, timeoutMs: number): Promise<RunResult> {
-  return new Promise((resolve) => {
-    const child =
-      process.platform === "win32"
-        // nosemgrep: javascript.lang.security.audit.dangerous-spawn-shell.dangerous-spawn-shell -- agent run tool: cmd is the intended payload, cwd-confined + timeout
-        ? spawn("powershell", ["-NoProfile", "-Command", cmd], { cwd })
-        // nosemgrep: javascript.lang.security.audit.dangerous-spawn-shell.dangerous-spawn-shell -- agent run tool: cmd is the intended payload, cwd-confined + timeout
-        : spawn("sh", ["-c", cmd], { cwd });
-    let out = "";
-    const cap = (b: Buffer): void => {
-      out += b.toString();
-      if (out.length > MAX_OBS_BYTES * 2) out = out.slice(0, MAX_OBS_BYTES * 2);
-    };
-    child.stdout?.on("data", cap);
-    child.stderr?.on("data", cap);
-    const timer = setTimeout(() => {
-      out += `\n… (timed out after ${timeoutMs}ms)`;
-      child.kill("SIGKILL");
-    }, timeoutMs);
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({ exitCode: code ?? -1, output: out });
-    });
-    child.on("error", (err) => {
-      clearTimeout(timer);
-      resolve({ exitCode: -1, output: out + String(err) });
-    });
-  });
+// runCommand executes a build/test command in the workspace root WITHOUT a shell (exec-plan): the
+// model's string is parsed by cmdguard-pure and each program is spawned with an argument list, so
+// nothing in it is interpreted by sh or powershell. The cwd is the confined root and there is a
+// hard timeout.
+async function runCommand(cmd: string, cwd: string, timeoutMs: number): Promise<RunResult> {
+  const r = await runPlanned(cmd, cwd, timeoutMs);
+  let out = r.stdout + r.stderr;
+  if (out.length > MAX_OBS_BYTES * 2) out = out.slice(0, MAX_OBS_BYTES * 2);
+  if (r.timedOut) out += `\n… (timed out after ${timeoutMs}ms)`;
+  return { exitCode: r.timedOut ? -1 : r.exitCode, output: out };
 }
 
 // Confirm asks the user about ONE command, showing the exact string and what is unusual about it.
@@ -153,7 +126,7 @@ export function newRunTool(root: string, timeoutMs = DEFAULT_RUN_TIMEOUT_MS, con
   return {
     name: () => "run",
     description: () =>
-      `run {"cmd":"npm test"} — run a build/test/shell command in the workspace root; returns exit code + captured output.`,
+      `run {"cmd":"npm test"} — run a build/test command in the workspace root, WITHOUT a shell: |, &&, || and ; work; redirects, $(…), $VARS, globs and ~ do not. Returns exit code + captured output.`,
     run: async (argsRaw: string): Promise<string> => {
       const a = JSON.parse(argsRaw) as { cmd?: string };
       const cmd = (a.cmd ?? "").trim();

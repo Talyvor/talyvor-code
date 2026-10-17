@@ -122,8 +122,10 @@ func IsCommandSafe(command string) bool {
 func ExecuteCommand(ctx context.Context, command string) (string, string, int, error) {
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
+		// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command -- `shell --run` exists to run a shell command: the user sees this exact text and confirms each run (default N)
 		cmd = exec.CommandContext(ctx, "powershell", "-NoProfile", "-Command", command)
 	} else {
+		// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command -- `shell --run` exists to run a shell command: the user sees this exact text and confirms each run (default N)
 		cmd = exec.CommandContext(ctx, "sh", "-c", command)
 	}
 	var stdout, stderr bytes.Buffer

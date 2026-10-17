@@ -24,6 +24,37 @@ func TestConfine_RejectsEscape(t *testing.T) {
 	}
 }
 
+// TestConfine_RefusesSymlinkOutOfRoot — B42.8: a symlink inside the root that points out of it
+// passes a ".." check, so Confine must resolve it. Directory link, file link, a file not yet created
+// under a directory link, and a dangling link are all refused; a link that stays inside is allowed.
+func TestConfine_RefusesSymlinkOutOfRoot(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	must(os.WriteFile(filepath.Join(outside, "secret"), []byte("s"), 0o644))
+	must(os.Mkdir(filepath.Join(root, "real"), 0o755))
+	must(os.Symlink(outside, filepath.Join(root, "dirlink")))
+	must(os.Symlink(filepath.Join(outside, "secret"), filepath.Join(root, "filelink")))
+	must(os.Symlink(filepath.Join(outside, "not-yet"), filepath.Join(root, "dangling")))
+	must(os.Symlink(filepath.Join(root, "real"), filepath.Join(root, "inlink")))
+
+	for _, p := range []string{"dirlink/secret", "filelink", "dirlink/new/file.go", "dangling", "real/../dirlink/secret"} {
+		if _, err := Confine(root, p); err == nil {
+			t.Errorf("Confine(%q) must refuse: it resolves outside the root", p)
+		}
+	}
+	for _, p := range []string{"inlink/x.go", "real/new/file.go", filepath.Join(root, "real")} {
+		if _, err := Confine(root, p); err != nil {
+			t.Errorf("Confine(%q) must allow an in-root path: %v", p, err)
+		}
+	}
+}
+
 // TestBuildFromRoot_ConfinedAndChunks — building the index over a real tree stays
 // INSIDE the root (S11): a secret file living OUTSIDE the root is never read into
 // the index, and every indexed chunk's file confines to the root.

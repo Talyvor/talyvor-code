@@ -8,7 +8,7 @@
 // lives in heal-pure.ts so it stays unit-testable.
 
 import * as vscode from "vscode";
-import { spawn } from "child_process";
+import { runPlanned } from "./exec-plan";
 import {
   detectBuildCommandFromMarkers,
   type BuildPlan,
@@ -56,63 +56,18 @@ export async function detectBuildCommand(rootFsPath: string): Promise<BuildPlan 
   return detectBuildCommandFromMarkers(markers, hasTest);
 }
 
-// runBuild executes the command via /bin/sh -c (POSIX) or
-// powershell -Command (Windows), streaming combined output into
-// the supplied OutputChannel. The 60s timeout is the same as the
-// Go side.
+// runBuild executes the command WITHOUT a shell (exec-plan: argument lists, never sh -c or
+// powershell), streaming combined output into the supplied OutputChannel. The 60s timeout is the
+// same as the Go side.
 export async function runBuild(
   command: string,
   workDir: string,
   channel: vscode.OutputChannel,
 ): Promise<HealExecutionResult> {
   channel.appendLine(`\n$ ${command}`);
-  return new Promise<HealExecutionResult>((resolve) => {
-    const start = Date.now();
-    const isWin = process.platform === "win32";
-    const child = isWin
-      ? spawn("powershell", ["-NoProfile", "-Command", command], { cwd: workDir })
-      : spawn("sh", ["-c", command], { cwd: workDir });
-
-    let stdout = "";
-    let stderr = "";
-    child.stdout?.on("data", (chunk: Buffer) => {
-      const text = chunk.toString();
-      stdout += text;
-      channel.append(text);
-    });
-    child.stderr?.on("data", (chunk: Buffer) => {
-      const text = chunk.toString();
-      stderr += text;
-      channel.append(text);
-    });
-
-    let timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGTERM");
-    }, BUILD_TIMEOUT_MS);
-
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({
-        command,
-        stdout,
-        stderr,
-        exitCode: timedOut ? 124 : (code ?? -1),
-        durationMs: Date.now() - start,
-      });
-    });
-    child.on("error", (err) => {
-      clearTimeout(timer);
-      resolve({
-        command,
-        stdout,
-        stderr: stderr + "\n" + String(err),
-        exitCode: -1,
-        durationMs: Date.now() - start,
-      });
-    });
-  });
+  const start = Date.now();
+  const r = await runPlanned(command, workDir, BUILD_TIMEOUT_MS, (t) => channel.append(t));
+  return { command, stdout: r.stdout, stderr: r.stderr, exitCode: r.exitCode, durationMs: Date.now() - start };
 }
 
 // stitchOutput combines stderr + stdout the same way the Go side

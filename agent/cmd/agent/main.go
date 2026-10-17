@@ -1704,6 +1704,7 @@ func editInExternalEditor(stderr io.Writer, initial string) (string, error) {
 	if err := tmp.Close(); err != nil {
 		return "", err
 	}
+	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command -- the developer's own $EDITOR on a temp file, argv form, no shell; git does the same
 	cmd := exec.Command(editor, tmpName)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -2032,23 +2033,10 @@ func isAbs(p string) bool {
 // confine resolves p against the workspace root and returns the cleaned absolute path ONLY if it stays
 // inside root. S11: an absolute path outside root, or any "../" escape, is refused here — confinement is
 // enforced at the filesystem chokepoint, independent of the interactive approval prompt (containment is
-// not an approval question). An absolute path that legitimately lies under root is allowed.
+// not an approval question). An absolute path that legitimately lies under root is allowed, and a
+// symlink out of root is refused (see codebase.Confine).
 func confine(root, p string) (string, error) {
-	rootAbs, err := filepath.Abs(root)
-	if err != nil {
-		return "", err
-	}
-	var abs string
-	if filepath.IsAbs(p) {
-		abs = filepath.Clean(p)
-	} else {
-		abs = filepath.Clean(filepath.Join(rootAbs, p))
-	}
-	rel, err := filepath.Rel(rootAbs, abs)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		return "", fmt.Errorf("refusing path outside workspace root %q: %s", rootAbs, p)
-	}
-	return abs, nil
+	return codebase.Confine(root, p)
 }
 
 func truncate(s string, n int) string {
@@ -3312,6 +3300,7 @@ func runContextEdit(stderr io.Writer) error {
 	if _, err := os.Stat(projectctx.ContextFileName); err != nil {
 		return fmt.Errorf("context edit: %s not found (run `talyvor-code init`)", projectctx.ContextFileName)
 	}
+	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command -- the developer's own $EDITOR on a fixed file name, argv form, no shell
 	cmd := exec.Command(editor, projectctx.ContextFileName)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

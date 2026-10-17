@@ -37,6 +37,7 @@ if (!fs.existsSync(srcDir)) {
 
 function walk(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- test: a directory entry from readdirSync over the repo tree
     const p = path.join(dir, e.name);
     if (e.isDirectory()) return walk(p);
     return e.isFile() && p.endsWith(".ts") && !p.endsWith(".test.ts") ? [p] : [];

@@ -16,6 +16,7 @@ function workspace(): string {
 
 /** ran reports whether the command's side effect happened. */
 function ran(root: string, marker: string): boolean {
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal -- test: a fixed marker name in a temp directory
   return fs.existsSync(path.join(root, marker));
 }
 

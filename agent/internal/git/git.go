@@ -17,7 +17,7 @@ import (
 // index. Empty string + nil error when there's nothing staged in
 // a valid repo; non-nil error when not inside a git repo at all.
 func GetStagedDiff() (string, error) {
-	out, err := run("git", "diff", "--staged")
+	out, err := run("diff", "--staged")
 	if err != nil {
 		return "", err
 	}
@@ -28,7 +28,7 @@ func GetStagedDiff() (string, error) {
 // "feature/foo"). On a detached HEAD git prints "HEAD" — we
 // pass that through unchanged.
 func GetCurrentBranch() (string, error) {
-	out, err := run("git", "rev-parse", "--abbrev-ref", "HEAD")
+	out, err := run("rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
 		return "", err
 	}
@@ -39,7 +39,7 @@ func GetCurrentBranch() (string, error) {
 // dropping any .git suffix. Returns an error if origin is not
 // configured (no point guessing in that case).
 func GetRepoName() (string, error) {
-	out, err := run("git", "remote", "get-url", "origin")
+	out, err := run("remote", "get-url", "origin")
 	if err != nil {
 		return "", err
 	}
@@ -68,7 +68,7 @@ func Commit(message string) error {
 	if strings.TrimSpace(message) == "" {
 		return errors.New("git: commit message cannot be empty")
 	}
-	_, err := run("git", "commit", "-m", message)
+	_, err := run("commit", "-m", message)
 	return err
 }
 
@@ -76,7 +76,7 @@ func Commit(message string) error {
 // surfaces the user's git config (e.g. push.default = simple)
 // rather than trying to second-guess it.
 func Push() error {
-	_, err := run("git", "push")
+	_, err := run("push")
 	return err
 }
 
@@ -87,7 +87,7 @@ func CreateBranch(name string) error {
 	if strings.TrimSpace(name) == "" {
 		return errors.New("git: branch name cannot be empty")
 	}
-	_, err := run("git", "checkout", "-b", name)
+	_, err := run("checkout", "-b", name)
 	return err
 }
 
@@ -97,7 +97,7 @@ func BranchExists(name string) (bool, error) {
 	if strings.TrimSpace(name) == "" {
 		return false, nil
 	}
-	out, err := run("git", "branch", "--list", name)
+	out, err := run("branch", "--list", name)
 	if err != nil {
 		return false, err
 	}
@@ -109,7 +109,7 @@ func BranchExists(name string) (bool, error) {
 // (`main` then `master`). Returns an error only if no candidate
 // can be resolved.
 func GetDefaultBranch() (string, error) {
-	if out, err := run("git", "symbolic-ref", "refs/remotes/origin/HEAD"); err == nil {
+	if out, err := run("symbolic-ref", "refs/remotes/origin/HEAD"); err == nil {
 		ref := strings.TrimSpace(out)
 		// Format: "refs/remotes/origin/main" → take the tail.
 		if i := strings.LastIndex(ref, "/"); i >= 0 {
@@ -131,7 +131,7 @@ func GetDefaultBranch() (string, error) {
 // GetRemoteURL returns the origin URL. Errors when origin isn't
 // configured — there's nothing useful to guess.
 func GetRemoteURL() (string, error) {
-	out, err := run("git", "remote", "get-url", "origin")
+	out, err := run("remote", "get-url", "origin")
 	if err != nil {
 		return "", err
 	}
@@ -155,7 +155,7 @@ func IsGitHub(remoteURL string) bool {
 // `pr` and `run --pr` flows so the agent's writes plus any
 // pre-existing edits land in one commit.
 func AddAll() error {
-	_, err := run("git", "add", "-A")
+	_, err := run("add", "-A")
 	return err
 }
 
@@ -163,7 +163,7 @@ func AddAll() error {
 // for "X files changed, Y insertions(+), Z deletions(-)" headers
 // in PR descriptions and confirmation prompts.
 func GetDiffStats() (string, error) {
-	return run("git", "diff", "--stat", "HEAD")
+	return run("diff", "--stat", "HEAD")
 }
 
 // PushBranch pushes the named branch and sets upstream. Honours
@@ -173,7 +173,7 @@ func PushBranch(branch string) error {
 	if strings.TrimSpace(branch) == "" {
 		return errors.New("git: branch name cannot be empty")
 	}
-	_, err := run("git", "push", "-u", "origin", branch)
+	_, err := run("push", "-u", "origin", branch)
 	return err
 }
 
@@ -185,7 +185,7 @@ func GetPRDiff(baseBranch string) (string, error) {
 	if strings.TrimSpace(baseBranch) == "" {
 		return "", errors.New("git: base branch is required")
 	}
-	return run("git", "diff", baseBranch+"...HEAD")
+	return run("diff", baseBranch+"...HEAD")
 }
 
 // GetChangedFiles returns the file paths touched on this branch
@@ -195,7 +195,7 @@ func GetChangedFiles(baseBranch string) ([]string, error) {
 	if strings.TrimSpace(baseBranch) == "" {
 		return nil, errors.New("git: base branch is required")
 	}
-	out, err := run("git", "diff", "--name-only", baseBranch+"...HEAD")
+	out, err := run("diff", "--name-only", baseBranch+"...HEAD")
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +210,7 @@ func GetCommitMessages(baseBranch string) ([]string, error) {
 	if strings.TrimSpace(baseBranch) == "" {
 		return nil, errors.New("git: base branch is required")
 	}
-	out, err := run("git", "log", baseBranch+"..HEAD", "--format=%s")
+	out, err := run("log", baseBranch+"..HEAD", "--format=%s")
 	if err != nil {
 		return nil, err
 	}
@@ -233,14 +233,14 @@ func splitLinesTrim(s string) []string {
 	return out
 }
 
-// run executes a command and returns its combined stdout/stderr.
+// run executes git with an argument list and returns its combined stdout/stderr.
 // On non-zero exit it wraps the stderr text so the caller can
 // surface a useful error to the user.
-func run(name string, args ...string) (string, error) {
-	cmd := exec.Command(name, args...)
+func run(args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("%s %s: %w (%s)", name, strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+		return "", fmt.Errorf("git %s: %w (%s)", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
 	}
 	return string(out), nil
 }

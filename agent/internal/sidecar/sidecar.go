@@ -497,6 +497,7 @@ func (s *Sidecar) forward(w http.ResponseWriter, r *http.Request) {
 	for {
 		n, rerr := resp.Body.Read(buf)
 		if n > 0 {
+			// nosemgrep: go.lang.security.audit.xss.no-direct-write-to-responsewriter.no-direct-write-to-responsewriter -- relays Lens's own response, with Lens's Content-Type, to the local child process
 			if _, werr := w.Write(buf[:n]); werr != nil {
 				return // the child hung up
 			}
@@ -516,6 +517,7 @@ func (s *Sidecar) fail(w http.ResponseWriter, what string, err error) {
 	fmt.Fprintf(s.cfg.Log, "talyvor exec: %s: %v\n", what, err)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadGateway)
+	// nosemgrep: go.lang.security.audit.xss.no-fprintf-to-responsewriter.no-fprintf-to-responsewriter -- application/json with a fixed message, and %q escapes it
 	fmt.Fprintf(w, `{"type":"error","error":{"type":"api_error","message":%q}}`,
 		"talyvor exec could not reach Lens: "+what)
 }

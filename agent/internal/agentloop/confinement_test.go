@@ -80,7 +80,7 @@ func TestRunTool_ExecutesInWorkspaceRoot(t *testing.T) {
 	// suit the test.
 	alwaysYes := func(string, string) bool { return true }
 	tool := NewRunToolWithConfirm(root, alwaysYes)
-	args, _ := json.Marshal(map[string]any{"cmd": "printf hi > run_marker.txt"})
+	args, _ := json.Marshal(map[string]any{"cmd": "touch run_marker.txt"})
 	if _, err := tool.Run(context.Background(), args); err != nil {
 		t.Fatalf("run: %v", err)
 	}

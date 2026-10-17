@@ -232,7 +232,7 @@ func ttyConfirm(command, reason string) bool {
 
 func (*runTool) Name() string { return "run" }
 func (*runTool) Description() string {
-	return `run {"cmd":"go test ./..."} — run a build/test/shell command in the repo root; returns exit code + captured output.`
+	return `run {"cmd":"go test ./..."} — run a build/test command in the repo root, WITHOUT a shell: |, &&, || and ; work; redirects, $(…), $VARS, globs and ~ do not. Returns exit code + captured output.`
 }
 
 // LastRun reports the exit code of the most recent Run and whether one has executed. It
