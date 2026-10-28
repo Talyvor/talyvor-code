@@ -21,6 +21,7 @@ import {
   splitBlocks,
   trimHistory,
 } from "./chat-pure";
+import { cspMeta, newNonce } from "./csp-pure";
 
 // Webview-side message envelopes. The HTML posts these via
 // acquireVsCodeApi().postMessage; the extension responds with the
@@ -363,7 +364,8 @@ export class ChatPanel {
   // when they switch tabs; the message history lives on the
   // class instance, so re-renders are cheap.
   private renderHTML(): string {
-    return `<!doctype html><html><head><meta charset="utf-8">
+    const nonce = newNonce();
+    return `<!doctype html><html><head><meta charset="utf-8">${cspMeta(nonce)}
 <style>${this.css()}</style>
 </head><body>
 <header>
@@ -383,7 +385,7 @@ export class ChatPanel {
 <footer>
   <span class="eyebrow">Session</span> <span id="sessionCost">${estimateHTML(0)}</span> <span id="sessionMeta">· 0s · —</span>
 </footer>
-<script>${this.script()}</script>
+<script nonce="${nonce}">${this.script()}</script>
 </body></html>`;
   }
 

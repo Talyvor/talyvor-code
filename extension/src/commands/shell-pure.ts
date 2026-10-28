@@ -92,11 +92,14 @@ export function stripGenerated(s: string): string {
     if (next === out) break;
     out = next;
   }
-  // Take the first non-empty line — commands should be single-line.
-  for (const line of out.split("\n")) {
-    if (line.trim() !== "") return line.trim();
+  // Take the first non-empty line — commands should be single-line. A terminal runs a command on \r
+  // as readily as on \n, and ESC starts a control sequence, so every control character goes too:
+  // what the model returned is staged at the prompt, never executed before the user presses Enter.
+  for (const line of out.split(/[\r\n\u2028\u2029]/)) {
+    const clean = line.replace(/[\x00-\x1f\x7f-\x9f]/g, " ").trim();
+    if (clean !== "") return clean;
   }
-  return out.trim();
+  return "";
 }
 
 // dangerousPatterns mirrors the Go list. Same advisory role —

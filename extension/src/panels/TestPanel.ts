@@ -7,6 +7,7 @@ import * as vscode from "vscode";
 import type { GeneratedTests } from "../providers/test-generator";
 import { escapeHTML } from "./chat-pure";
 import { TEST_CSS, estimateHTML } from "./theme-pure";
+import { cspMeta, newNonce } from "./csp-pure";
 
 type Inbound =
   | { type: "createFile" }
@@ -158,7 +159,8 @@ export class TestPanel {
   // renderHTML emits the static webview — header, code preview,
   // three action buttons, footer with cost + model + Lens credit.
   private renderHTML(): string {
-    return `<!doctype html><html><head><meta charset="utf-8">
+    const nonce = newNonce();
+    return `<!doctype html><html><head><meta charset="utf-8">${cspMeta(nonce)}
 <style>${this.css()}</style>
 </head><body>
 <header>
@@ -179,7 +181,7 @@ export class TestPanel {
 <footer>
   <span class="eyebrow">Model</span> claude-sonnet-4-6 · <span class="eyebrow">Cost</span> ${estimateHTML(this.tests.costUSD)} · Powered by Talyvor Lens
 </footer>
-<script>${this.script()}</script>
+<script nonce="${nonce}">${this.script()}</script>
 </body></html>`;
   }
 

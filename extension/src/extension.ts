@@ -9,6 +9,7 @@
 
 import * as vscode from "vscode";
 import { TalyvorConfig } from "./config";
+import type { SecretKey } from "./secrets-pure";
 import { LensClient } from "./lens/client";
 import { connectionReport } from "./lens/connreport-pure";
 import { TrackClient } from "./track/client";
@@ -51,6 +52,7 @@ import { generateShellCommand } from "./commands/shell-command";
 import { selectModelCommand } from "./commands/model-selector";
 import { reviewPRCommand, reviewSelectionCommand } from "./commands/pr-review";
 import { runClaudeCodeCommand } from "./commands/claude-code";
+import { cspMeta } from "./panels/csp-pure";
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   // Move any plaintext API keys into SecretStorage and populate the credential cache BEFORE any client
@@ -266,7 +268,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     ),
   );
 
+  const reloadClients = (): void => {
+    config = TalyvorConfig.getLensConfig();
+    lensClient = new LensClient(config.url, config.apiKey);
+    trackClient = new TrackClient(config.trackUrl, config.trackApiKey);
+    docsClient = new DocsClient(config.docsUrl, config.docsApiKey);
+    refreshStatusBar();
+    void probeIntegrations();
+  };
+
   context.subscriptions.push(
+    vscode.commands.registerCommand("talyvor.setApiKey", async () => {
+      if (await setApiKeyCommand(context.secrets)) reloadClients();
+    }),
     vscode.workspace.onDidChangeConfiguration(async (e) => {
       if (!e.affectsConfiguration("talyvor")) return;
       // If the user re-typed a credential into settings.json, migrate it back out and refresh the
@@ -274,12 +288,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       if (TalyvorConfig.secretKeys.some((k) => e.affectsConfiguration(`talyvor.${k}`))) {
         await TalyvorConfig.initSecrets(context.secrets);
       }
-      config = TalyvorConfig.getLensConfig();
-      lensClient = new LensClient(config.url, config.apiKey);
-      trackClient = new TrackClient(config.trackUrl, config.trackApiKey);
-      docsClient = new DocsClient(config.docsUrl, config.docsApiKey);
-      refreshStatusBar();
-      void probeIntegrations();
+      reloadClients();
     }),
     statusBar,
   );
@@ -288,10 +297,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window
       .showInformationMessage(
         "Talyvor Code installed! Configure your Lens URL and API key to get started.",
+        "Set API Key",
         "Open Settings",
       )
       .then((action) => {
-        if (action === "Open Settings") {
+        if (action === "Set API Key") {
+          void vscode.commands.executeCommand("talyvor.setApiKey");
+        } else if (action === "Open Settings") {
           void vscode.commands.executeCommand(
             "workbench.action.openSettings",
             "talyvor",
@@ -307,6 +319,37 @@ export function deactivate(): void {
 }
 
 // ─── Commands ──────────────────────────────────────
+
+const API_KEY_CHOICES: { key: SecretKey; label: string; detail: string }[] = [
+  { key: "lensApiKey", label: "Lens", detail: "Your coding agent's key, from Agent Wallets → Issue a key" },
+  { key: "trackApiKey", label: "Track", detail: "Talyvor Track API key" },
+  { key: "docsApiKey", label: "Docs", detail: "Talyvor Docs API key" },
+  { key: "githubToken", label: "GitHub", detail: "Personal access token for Create PR" },
+];
+
+// setApiKeyCommand asks for a key in a password box and stores it in the OS keychain (SecretStorage),
+// so it never appears in settings.json. Returns true when a key was saved or removed.
+async function setApiKeyCommand(secrets: vscode.SecretStorage): Promise<boolean> {
+  const pick = await vscode.window.showQuickPick(API_KEY_CHOICES, {
+    title: "Talyvor: Set API Key",
+    placeHolder: "Which key?",
+  });
+  if (!pick) return false;
+  const value = await vscode.window.showInputBox({
+    title: `Talyvor: ${pick.label} key`,
+    prompt: "Saved in your OS keychain, never in settings. Leave empty to remove it.",
+    password: true,
+    ignoreFocusOut: true,
+  });
+  if (value === undefined) return false;
+  await TalyvorConfig.setSecret(secrets, pick.key, value);
+  void vscode.window.showInformationMessage(
+    value.trim() === ""
+      ? `Talyvor: ${pick.label} key removed from your keychain.`
+      : `Talyvor: ${pick.label} key saved in your keychain.`,
+  );
+  return true;
+}
 
 async function testConnectionCommand(lens: LensClient): Promise<void> {
   if (!lens.isConfigured()) {
@@ -388,7 +431,7 @@ function renderCostHTML(
     .join("");
   const sessionContribution =
     session.byIssue[issueId] ?? session.byIssue["(no issue)"] ?? 0;
-  return `<!doctype html><html><head><meta charset="utf-8">
+  return `<!doctype html><html><head><meta charset="utf-8">${cspMeta()}
 <style>${COST_CSS}</style></head><body>
 <header><span class="eyebrow">Talyvor · AI cost</span></header>
 <main>

@@ -8,6 +8,7 @@ import {
   SECRET_KEYS,
   loadSecrets,
   migrateSecrets,
+  setSecret,
   type PlaintextStore,
   type SecretKey,
   type SecretStore,
@@ -104,6 +105,13 @@ export class TalyvorConfig {
     const migrated = await migrateSecrets(vscodePlaintextStore(), vscodeSecretStore(secrets));
     secretCache = await loadSecrets(vscodeSecretStore(secrets));
     return migrated.length;
+  }
+
+  // setSecret is `Talyvor: Set API Key`: the typed key goes to SecretStorage and the cache, never to
+  // settings.
+  static async setSecret(secrets: vscode.SecretStorage, key: SecretKey, value: string): Promise<void> {
+    await setSecret(vscodePlaintextStore(), vscodeSecretStore(secrets), key, value);
+    secretCache = await loadSecrets(vscodeSecretStore(secrets));
   }
 
   // secretKeys exposes the credential setting keys so callers can detect a plaintext re-entry.
