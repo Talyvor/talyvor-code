@@ -3,6 +3,20 @@
 This file is the Marketplace **Changelog** tab. It ships inside the `.vsix`; anything not written
 here is invisible to someone deciding whether to install.
 
+## Unreleased
+
+### Added
+
+- **`Talyvor: Set API Key`** saves the Lens, Track, Docs and GitHub keys straight into your OS
+  keychain from a password box; they never pass through settings. Leave the box empty to remove one.
+
+### Security
+
+- Every Talyvor panel carries a strict content security policy: nothing loads from the network, and
+  only the panel's own script runs.
+- `Talyvor: Generate Shell Command` strips control characters from the suggested command, so it is
+  always staged at the prompt and runs only when you press Enter.
+
 ## [0.3.1]
 
 Works with Talyvor Code CLI v0.3.0; nothing to upgrade on the CLI side.

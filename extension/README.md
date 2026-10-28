@@ -20,8 +20,8 @@ Extension id: **`talyvor.talyvor-code`**
 2. Fund it, and set its rules: a budget, limits, and which spends need your approval.
 3. Press **Issue a key**. That key spends only this agent's balance, under its rules, and is shown
    once.
-4. Set `talyvor.lensUrl` to your Lens and paste the agent key into `talyvor.lensApiKey`; it is moved
-   into the OS keychain straight away (see *Secrets* below).
+4. Set `talyvor.lensUrl` to your Lens, run **`Talyvor: Set API Key`**, pick **Lens** and paste the
+   agent key. It goes straight into the OS keychain, never into your settings (see *Secrets* below).
 5. Run **`Talyvor: Test Lens Connection`**.
 
 From then on the agent's statement in Agent Wallets shows what it spent, call by call, and
@@ -95,7 +95,8 @@ straight to disk with no per-file approval. Review those with `git`.
 
 ## Secrets
 
-Keys pasted into `talyvor.lensApiKey`, `talyvor.trackApiKey`, `talyvor.docsApiKey` and
+**`Talyvor: Set API Key`** saves the Lens, Track, Docs and GitHub keys in the **OS keychain** (VS Code
+`SecretStorage`); leave the box empty to remove one. Keys pasted into `talyvor.lensApiKey`, `talyvor.trackApiKey`, `talyvor.docsApiKey` and
 `talyvor.githubToken` are moved into the **OS keychain** (VS Code `SecretStorage`) on activation and
 cleared from your settings file. Those settings exist to migrate an existing value, and are marked
 deprecated for that reason.
@@ -130,12 +131,8 @@ From the Marketplace, by the id this package publishes under (`publisher` + `nam
 code --install-extension talyvor.talyvor-code
 ```
 
-To install a locally built package instead — the same artefact CI builds on every pull request:
-
-```
-cd extension && npm install && npm run package
-code --install-extension talyvor-code-*.vsix
-```
+Install and update it only from the Marketplace: VS Code checks the Marketplace's signature on
+every install and update, and a `.vsix` from anywhere else carries none.
 
 ## Licence
 

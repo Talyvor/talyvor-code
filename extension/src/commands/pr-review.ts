@@ -36,6 +36,7 @@ import {
   promptForToken,
   resolveToken,
 } from "../github/pr-creator";
+import { cspMeta, newNonce } from "../panels/csp-pure";
 
 const execFileP = promisify(execFile);
 const REVIEW_MODEL = "claude-sonnet-4-6";
@@ -307,7 +308,8 @@ class PRReviewPanel {
     const counts = countFindings(this.review);
     const body = renderMarkdown(this.review);
     const showPostButton = Boolean(this.owner && this.repo);
-    return `<!doctype html><html><head><meta charset="utf-8"><style>${REVIEW_CSS}</style></head>
+    const nonce = newNonce();
+    return `<!doctype html><html><head><meta charset="utf-8">${cspMeta(nonce)}<style>${REVIEW_CSS}</style></head>
 <body>
 <header>
   <span class="eyebrow">Talyvor · Review</span>
@@ -318,7 +320,7 @@ class PRReviewPanel {
   ${showPostButton ? `<button id="postBtn">Post to GitHub</button>` : ""}
 </header>
 <main class="md-body">${body}</main>
-<script>
+<script nonce="${nonce}">
 const vscode = acquireVsCodeApi();
 document.getElementById('copyBtn')?.addEventListener('click', () => vscode.postMessage({type:'copy'}));
 document.getElementById('postBtn')?.addEventListener('click', () => vscode.postMessage({type:'post'}));

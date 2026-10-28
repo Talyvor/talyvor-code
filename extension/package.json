@@ -49,7 +49,7 @@
           "type": "string",
           "default": "",
           "description": "Your coding agent's key: in Talyvor, open Agent Wallets, pick the agent and press Issue a key \u2014 every call then spends only that agent's wallet, under its rules. A workspace key also works, billed to the workspace instead. DEPRECATED as a storage location: on activation this value is moved into the OS keychain (SecretStorage) and cleared from settings. Set it here once to migrate, or it will be migrated automatically.",
-          "markdownDeprecationMessage": "Stored in the OS keychain (SecretStorage) now; this setting is cleared automatically after migration."
+          "markdownDeprecationMessage": "Use **Talyvor: Set API Key** \u2014 it saves the key in your OS keychain and never in settings. A value typed here is moved there and cleared."
         },
         "talyvor.trackUrl": {
           "type": "string",
@@ -60,7 +60,7 @@
           "type": "string",
           "default": "",
           "description": "Talyvor Track API key. DEPRECATED storage location \u2014 migrated to the OS keychain (SecretStorage) on activation and cleared from settings.",
-          "markdownDeprecationMessage": "Stored in the OS keychain (SecretStorage) now; this setting is cleared automatically after migration."
+          "markdownDeprecationMessage": "Use **Talyvor: Set API Key** \u2014 it saves the key in your OS keychain and never in settings. A value typed here is moved there and cleared."
         },
         "talyvor.docsUrl": {
           "type": "string",
@@ -71,13 +71,13 @@
           "type": "string",
           "default": "",
           "description": "Talyvor Docs API key. DEPRECATED storage location \u2014 migrated to the OS keychain (SecretStorage) on activation and cleared from settings.",
-          "markdownDeprecationMessage": "Stored in the OS keychain (SecretStorage) now; this setting is cleared automatically after migration."
+          "markdownDeprecationMessage": "Use **Talyvor: Set API Key** \u2014 it saves the key in your OS keychain and never in settings. A value typed here is moved there and cleared."
         },
         "talyvor.githubToken": {
           "type": "string",
           "default": "",
           "description": "GitHub personal-access token for `Create PR` (falls back to $GITHUB_TOKEN). Requires `repo` scope. DEPRECATED storage location \u2014 migrated to the OS keychain (SecretStorage) on activation and cleared from settings.",
-          "markdownDeprecationMessage": "Stored in the OS keychain (SecretStorage) now; this setting is cleared automatically after migration."
+          "markdownDeprecationMessage": "Use **Talyvor: Set API Key** \u2014 it saves the key in your OS keychain and never in settings. A value typed here is moved there and cleared."
         },
         "talyvor.workspaceId": {
           "type": "string",
@@ -122,6 +122,10 @@
       {
         "command": "talyvor.showCostDashboard",
         "title": "Talyvor: Show AI Cost Dashboard"
+      },
+      {
+        "command": "talyvor.setApiKey",
+        "title": "Talyvor: Set API Key"
       },
       {
         "command": "talyvor.testConnection",
@@ -339,5 +343,8 @@
     "@types/node": "^18.0.0",
     "@vscode/vsce": "3.9.2",
     "typescript": "^5.4.0"
+  },
+  "overrides": {
+    "@azure/msal-node": "^7.1.2"
   }
 }

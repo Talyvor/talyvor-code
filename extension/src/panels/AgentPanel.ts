@@ -16,6 +16,7 @@ import { AgentMode, type AgentTask } from "../agent/AgentMode";
 import type { IssueContextProvider } from "../track/issue-context";
 import { escapeHTML } from "./chat-pure";
 import { AGENT_CSS, diffHTML, estimateHTML } from "./theme-pure";
+import { cspMeta, newNonce } from "./csp-pure";
 
 type Inbound =
   | { type: "start"; description: string }
@@ -233,7 +234,8 @@ export class AgentPanel {
   private renderHTML(task: AgentTask | undefined): string {
     const cfg = this.freshConfig();
     const body = task ? this.renderTask(task) : this.renderIdle();
-    return `<!doctype html><html><head><meta charset="utf-8">
+    const nonce = newNonce();
+    return `<!doctype html><html><head><meta charset="utf-8">${cspMeta(nonce)}
 <style>${this.css()}</style>
 </head><body>
 <header>
@@ -242,7 +244,7 @@ export class AgentPanel {
   <span class="status eyebrow" id="status">${task ? task.status : "idle"}</span>
 </header>
 <main>${body}</main>
-<script>${this.script()}</script>
+<script nonce="${nonce}">${this.script()}</script>
 </body></html>`;
   }
 

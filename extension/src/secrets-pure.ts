@@ -54,3 +54,18 @@ export async function loadSecrets(secrets: SecretStore): Promise<Record<SecretKe
   }
   return out;
 }
+
+// setSecret saves a credential typed into the editor's password box straight into the secret store
+// and drops any plaintext copy, so the key never passes through settings.json. An empty value removes
+// the credential.
+export async function setSecret(
+  settings: PlaintextStore,
+  secrets: SecretStore,
+  key: SecretKey,
+  value: string,
+): Promise<void> {
+  const v = value.trim();
+  if (v === "") await secrets.delete(key);
+  else await secrets.store(key, v);
+  await settings.clear(key);
+}

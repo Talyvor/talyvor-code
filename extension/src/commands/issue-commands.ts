@@ -9,6 +9,7 @@ import type { LensConfig } from "../lens/types";
 import type { TrackClient, TrackIssue } from "../track/client";
 import { isValidIssueIdentifier } from "../track/issue-context-pure";
 import { ISSUE_CSS } from "../panels/theme-pure";
+import { cspMeta } from "../panels/csp-pure";
 
 // QUICK_PICK_DEBOUNCE_MS is the keystroke debounce when the user
 // types in the issue picker. Hits the Track search endpoint at
@@ -137,7 +138,7 @@ export async function showIssueCommand(
 function renderIssueHTML(issue: TrackIssue): string {
   const esc = (s: string) =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  return `<!doctype html><html><head><meta charset="utf-8">
+  return `<!doctype html><html><head><meta charset="utf-8">${cspMeta()}
 <style>${ISSUE_CSS}</style></head><body>
 <header><span class="eyebrow">Talyvor · Issue</span><span class="chip">${esc(issue.identifier)}</span></header>
 <main>

@@ -19,6 +19,7 @@ import {
   renderMarkdown,
   type DocsSearchResult,
 } from "./docs-pure";
+import { cspMeta, newNonce } from "../panels/csp-pure";
 
 type Inbound =
   | { type: "search"; query: string }
@@ -185,7 +186,8 @@ export class DocsPanel {
         : this.mode === "ask"
           ? this.renderAsk()
           : this.renderSearch();
-    return `<!doctype html><html><head><meta charset="utf-8">
+    const nonce = newNonce();
+    return `<!doctype html><html><head><meta charset="utf-8">${cspMeta(nonce)}
 <style>${this.css()}</style>
 </head><body>
 <header>
@@ -193,7 +195,7 @@ export class DocsPanel {
   ${this.mode !== "search" ? `<button id="backBtn" class="ghost">← Back</button>` : ""}
 </header>
 <main>${body}</main>
-<script>${this.script()}</script>
+<script nonce="${nonce}">${this.script()}</script>
 </body></html>`;
   }
 
