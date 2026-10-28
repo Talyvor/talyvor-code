@@ -39,7 +39,7 @@ test("every webview carries a strict content security policy and loads no remote
   assert.ok(panels.length >= 7, `found ${panels.length} webview files, expected at least 7`);
   for (const { file, text } of panels) assert.match(text, /\$\{cspMeta\(/, `${file} renders a webview without cspMeta`);
   for (const { file, text } of sources()) {
-    for (const tag of text.match(/<script\b[^>]*>/g) ?? []) {
+    for (const tag of text.match(/<script\b[^>]*>/gi) ?? []) {
       assert.equal(tag, '<script nonce="${nonce}">', `${file}: ${tag} has no nonce, or loads a src`);
     }
   }
