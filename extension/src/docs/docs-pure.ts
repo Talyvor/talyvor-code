@@ -180,15 +180,18 @@ function renderInline(s: string): string {
   return work;
 }
 
+// escapeHTML is safe in text and in a quoted attribute: DocsPanel uses it for both (B67.7).
 export function escapeHTML(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function escapeAttr(s: string): string {
-  return escapeHTML(s).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  return escapeHTML(s);
 }
 
 // buildHoverMarkdown produces the markdown body shown in the
