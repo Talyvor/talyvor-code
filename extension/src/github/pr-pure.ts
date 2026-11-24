@@ -29,8 +29,17 @@ export function parseRepoFromURL(remoteURL: string): ParsedRepo | undefined {
   return undefined;
 }
 
+// isGitHub compares the remote's host, never a substring of the whole URL (B67.7): a remote on
+// another host can mention github.com in its own host name or path.
 export function isGitHub(remoteURL: string): boolean {
-  return (remoteURL ?? "").includes("github.com");
+  const url = (remoteURL ?? "").trim();
+  const scp = /^[^@/:]+@([^:/]+):/.exec(url);
+  if (scp) return scp[1].toLowerCase() === "github.com";
+  try {
+    return new URL(url).hostname.toLowerCase() === "github.com";
+  } catch {
+    return false;
+  }
 }
 
 // MAX_BRANCH_SLUG_LEN matches the Go side. GitHub allows longer
